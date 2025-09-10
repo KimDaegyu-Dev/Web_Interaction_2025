@@ -159,7 +159,6 @@ function main() {
       <h3>결과</h3>
       <p>간절한 정도: ${calculateDesire(change)}</p>
       <p>간절함 변화량: ${desire - prevDesire}</p>
-      <p>변화량: ${change.toFixed(2)}</p>
     `;
 
     drawChartRects(chartData);
