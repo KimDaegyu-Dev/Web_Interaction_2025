@@ -87,28 +87,37 @@ function calculateChange(data, desire, prevDesire) {
 }
 // 간절함 계산 함수
 function calculateDesire(change) {
+  let emotion = "";
+  let text = "";
   if (change > 0.7 && change <= 1) {
-    return "매우 간절한 상태입니다";
+    emotion = "best";
+    text = "매우 간절한 상태입니다";
   }
   if (change > 0.5 && change < 0.7) {
-    return "간절한 상태입니다";
+    emotion = "good";
+    text = "간절한 상태입니다";
   }
   if (change > 0.3 && change < 0.5) {
-    return "살짝 간절함입니다";
+    emotion = "good";
+    text = "살짝 간절함입니다";
   }
   if (change > -0.3 && change < 0.3) {
-    return "방심한 상태입니다";
+    emotion = "soso";
+    text = "방심한 상태입니다";
   }
   if (change < -0.3 && change > -0.5) {
-    return "살짝 방심한 상태입니다";
+    emotion = "soso";
+    text = "살짝 방심한 상태입니다";
   }
   if (change < -0.5 && change > -0.7) {
-    return "간절하지 않은 상태입니다";
+    emotion = "bad";
+    text = "간절하지 않은 상태입니다";
   }
   if (change < -0.7 && change >= -1) {
-    return "전혀 간절하지 않은 상태입니다";
+    emotion = "worst";
+    text = "전혀 간절하지 않은 상태입니다";
   }
-  return change;
+  return { emotion, text };
 }
 
 // 입력값 읽기
@@ -154,10 +163,11 @@ function main() {
       height: nextHeight,
       color: isRed ? "red" : "blue",
     });
-
+    const { emotion, text } = calculateDesire(change);
     document.querySelector("#resultContainer").innerHTML = `
       <h3>결과</h3>
-      <p>간절한 정도: ${calculateDesire(change)}</p>
+      <img src="assets/${emotion}.jpg" alt="간절함 이미지"  style="width: 400px; height: 400px; object-fit: cover;"/>
+      <p>간절한 정도: ${text}</p>
       <p>간절함 변화량: ${desire - prevDesire}</p>
     `;
 
