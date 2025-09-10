@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      body {
+        background: #f8f9fa;
+        margin: 0;
+        padding: 20px;
+        color: #333;
+      }
+
+      h1 {
+        text-align: center;
+        color: #222;
+        margin-bottom: 10px;
+      }
+
+      h3 {
+        text-align: center;
+        font-weight: 400;
+        color: #666;
+        margin-top: 0;
+      }
+
+      #inputContainer {
+        max-width: 400px;
+        margin: 20px auto;
+        padding: 15px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      #inputContainer label {
+        font-size: 18px;
+        display: block;
+        margin-bottom: 6px;
+        color: #444;
+      }
+
+      #input {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        width: 100%;
+        margin-bottom: 10px;
+        font-size: 14px;
+        box-sizing: border-box;
+      }
+
+      #inputButton {
+        width: 100%;
+        padding: 10px;
+        background: #007bff;
+        border: none;
+        color: white;
+        font-size: 15px;
+        font-weight: 600;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+
+      #inputButton:hover {
+        background: #0056b3;
+      }
+
+      #resultContainer {
+        max-width: 400px;
+        margin: 20px auto;
+        padding: 15px;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      #svg {
+        display: block;
+        margin: 30px auto;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        transition: height 0.3s, width 0.3s;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>간절함 계산기</h1>
+    <h3>당신의 간절함을 측정해 드립니다</h3>
+
+    <div id="inputContainer">
+      <label for="input">현재 간절한 정도를 입력해주세요</label>
+      <input
+        type="input"
+        style="width: 100%"
+        id="input"
+        placeholder="예: 200"
+      />
+      <button id="inputButton">계산</button>
+    </div>
+    <div id="resultContainer">
+      <h3>결과</h3>
+    </div>
+
+    <svg id="svg" width="100%" height="1500"></svg>
+    <script src="index.js"></script>
+  </body>
+</html>
