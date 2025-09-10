@@ -5,13 +5,13 @@ function generateData(count) {
 
   for (let i = 0; i < count; i++) {
     const change = Math.floor(Math.random() * 40 - 20);
-    base = Math.max(50, Math.min(450, base + change)); // 범위 제한 (50~450)
+    base = Math.max(50, Math.min(450, base + change)); // 50~450
 
     const height = Math.floor(Math.random() * 100) + 50;
     const y = base - height;
     const color = Math.random() > 0.5 ? "red" : "blue";
     data.push({
-      x: i * 40 + 20, // 막대 간격
+      x: i * 40 + 20,
       y,
       width: 20,
       height,
@@ -33,7 +33,6 @@ function drawChartRects(data) {
     rect.setAttribute("width", d.width);
     rect.setAttribute("height", d.height);
 
-    // 랜덤 색상
     rect.setAttribute("fill", d.color);
 
     svg.appendChild(rect);
@@ -130,7 +129,6 @@ function getInputValues() {
 // svg 관리 함수
 function manageSvg(data) {
   const svg = document.querySelector("#svg");
-  // svg 크기 관리
   svg.setAttribute("width", data.length * 40 + 20);
   svg.setAttribute(
     "height",
@@ -140,7 +138,7 @@ function manageSvg(data) {
 
 function main() {
   const inputButton = document.querySelector("#inputButton");
-  const chartData = generateData(20); // 20개의 막대
+  const chartData = generateData(20);
   let prevDesire = 0;
   drawChartRects(chartData);
   manageSvg(chartData);
