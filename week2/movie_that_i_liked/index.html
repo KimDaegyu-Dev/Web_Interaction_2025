@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite App</title>
+  </head>
+  <body class="overflow-hidden">
+    <div
+      id="carouselProgress"
+      class="h-fit w-full absolute top-0 left-0 flex items-center justify-center py-1 px-10 z-10"
+    >
+      <img
+        id="muteBtn"
+        src="/speaker-off.svg"
+        alt="Mute Button"
+        draggable="false"
+        class="mr-4"
+      />
+    </div>
+    <div
+      id="bgmPlayer"
+      class="absolute top-25 z-10 w-full flex justify-center items-center gap-2"
+    >
+      <button id="playBtn" class="text-white text-sm">넘어가는 중...</button>
+      <p id="bgmTitle" class="text-white text-sm"></p>
+    </div>
+    <div
+      id="intro"
+      class="h-screen w-screen absolute z-1 flex flex-col justify-center items-center gap-6"
+    >
+      <p id="introText" class="text-white text-3xl"></p>
+    </div>
+
+    <audio id="bgm" autoplay loop></audio>
+    <div
+      id="movieImgParent"
+      draggable="false"
+      class="h-screen bg-gray-100 w-screen absolute -z-1 overflow-hidden"
+    >
+      <img
+        id="movieImg"
+        src="/kungfuhustle.jpg"
+        alt="Movie Poster"
+        draggable="false"
+        class="object-cover w-full h-full select-none pointer-events-none"
+      />
+    </div>
+    <div
+      id="dimmed"
+      class="h-100 w-full px-20 absolute z-1 bottom-0 bg-gradient-to-t from-black/80 to-transparent flex justify-between flex-row items-center"
+    >
+      <img
+        id="movieTitle"
+        class="h-80 w-fit"
+        src="/kungfuhustle_title.png"
+        alt="Movie Title"
+        draggable="false"
+      />
+      <div class="">
+        <p class="max-w-5xl text-white p-6 text-xl" id="movieInfo">
+          In a city overrun by gangsters, a hapless wannabe gangster aspires to
+          join the notorious Axe Gang. However, his plans are thwarted when he
+          encounters a group of eccentric residents with extraordinary martial
+        </p>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
