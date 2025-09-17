@@ -26,10 +26,17 @@
       <button id="playBtn" class="text-white text-sm">넘어가는 중...</button>
       <p id="bgmTitle" class="text-white text-sm"></p>
     </div>
+    <div
+      id="intro"
+      class="h-screen w-screen absolute z-1 flex flex-col justify-center items-center gap-6"
+    >
+      <p id="introText" class="text-white text-3xl"></p>
+    </div>
 
     <audio id="bgm" autoplay loop></audio>
     <div
       id="movieImgParent"
+      draggable="false"
       class="h-screen bg-gray-100 w-screen absolute -z-1 overflow-hidden"
     >
       <img
@@ -46,6 +53,7 @@
     >
       <img
         id="movieTitle"
+        class="h-80 w-fit"
         src="/kungfuhustle_title.png"
         alt="Movie Title"
         draggable="false"

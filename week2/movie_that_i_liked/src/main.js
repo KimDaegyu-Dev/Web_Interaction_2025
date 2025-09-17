@@ -1,18 +1,38 @@
 import "./style.css";
 import { gsap } from "gsap";
-const imgs = ["./kungfuhustle.jpg", "./siksin.jpg", "./kungfuhustle.jpg"];
+import { TextPlugin } from "gsap/TextPlugin";
+
+gsap.registerPlugin(TextPlugin);
+
+const imgs = [
+  "./siksin.jpg",
+  "./bgs/dumb-and-dumber.jpg",
+  "./bgs/god-of-food.webp",
+  "./bgs/kungfuhustle.jpg",
+];
 const musics = [
   "./musics/school_of_rock.mp3",
-  "./musics/school_of_rock.mp3",
-  "./musics/school_of_rock.mp3",
+  "./musics/dumb-and-dumber.mp3",
+  "./musics/god-of-food.mp3",
 ];
-const titles = ["식스센스", "쿵푸허슬", "식스센스"];
+const titles = [
+  "",
+  "./titles/dumb-and-dumber-title.webp",
+  "./titles/god-of-food-title.jpg",
+  "./titles/kungfuhustle-title.webp",
+];
 const descriptions = [
   "식스센스는 1999년에 개봉한 미국의 심리 스릴러 영화로, M. 나이트 샤말란이 감독과 각본을 맡았다.",
-  "쿵푸 허슬은 2004년에 개봉한 홍콩의 액션 코미디 영화로, 스티븐 차우가 감독과 주연을 맡았다.",
-  "식스센스는 1999년에 개봉한 미국의 심리 스릴러 영화로, M. 나이트 샤말란이 감독과 각본을 맡았다.",
+  `영화 덤 앤 더머는 얼간이 친구 로이드와 해리가 잃어버린 가방을 돌려주기 위해 아스펜으로 떠나는 코믹 로드무비다.
+돈가방을 발견한 뒤 얻게 된 부와 기회마저 허무하게 날려버리지만, 끝까지 순수한 두 사람의 엉뚱한 우정이 웃음과 아이러니를 남긴다.`,
+  `영화 식신은 허세 가득한 요리 스타 주성치가 몰락 끝에 음식의 진심을 깨닫고, 소림사 수련과 요리 대결을 거쳐 성장하는 과정을 그린 코믹 요리 무협극이다.
+패러디와 황당 개그가 넘치지만, 마지막에 선보이는 암연소혼반은 웃음 뒤에 남는 따뜻한 감동을 전한다.`,
+  `
+영화 쿵푸허슬은 삼류 건달 아성이 우연히 무림의 절대 고수로 각성해, 저롱성채를 지키기 위해 도끼파와 화운사신에 맞서는 과정을 그린 무협 코미디다.
+만화 같은 액션과 기발한 개그, 그리고 성장 서사가 어우러져, 주성치 특유의 과장된 유머 속에서도 통쾌한 카타르시스를 전한다.
+`,
 ];
-const duration = [2, 6, 6];
+const duration = [5, 6, 6, 6];
 function carouselInit() {
   const carouselProgress = document.querySelector("#carouselProgress");
   const bgm = document.querySelector("#bgm");
@@ -63,12 +83,13 @@ function animateCarouselList(index) {
       onComplete: () => {
         let nextIndex = index + 1;
         if (nextIndex >= imgs.length) {
-          nextIndex = 0;
+          nextIndex = 1;
           const allProgress = document.querySelectorAll("#carouselList > div");
-          allProgress.forEach((prog) => {
-            prog.style.transform = "translateX(-100%)";
+          allProgress.forEach((prog, index) => {
+            if (index !== 0) {
+              prog.style.transform = "translateX(-100%)";
+            }
           });
-          progress.style.transform = "translateX(-100%)";
         }
         updateCarousel(nextIndex);
       },
@@ -95,7 +116,14 @@ function changeMovieImg(index) {
   movieImg.src = imgs[index];
   const dimmed = document.querySelector("#dimmed");
   const movieInfo = document.querySelector("#movieInfo");
+  const movieTitle = document.querySelector("#movieTitle");
   movieInfo.textContent = descriptions[index];
+  movieTitle.src = titles[index];
+  if (index === 0) {
+    gsap.set(dimmed, { visibility: "hidden", opacity: 0 });
+  } else {
+    gsap.set(dimmed, { visibility: "visible" });
+  }
   gsap.fromTo(
     dimmed,
     { opacity: 0.2, y: 100 },
@@ -135,9 +163,42 @@ function bgmPlayer() {
   };
 }
 
+function introAnimation() {
+  const introText = document.querySelector("#introText");
+  const intro = document.querySelector("#intro");
+  const tl = gsap.timeline();
+  tl.to(introText, {
+    text: "내가 좋아하는 영화들",
+    duration: duration[0] - 2,
+    ease: "power4.inOut",
+  })
+    .fromTo(
+      intro,
+      {
+        backgroundColor: "rgba(0,0,0,0.6)",
+      },
+      {
+        backgroundColor: "rgba(0,0,0,0)",
+        duration: duration[0],
+        ease: "power4.Out",
+      },
+      "<"
+    )
+    .to(
+      introText,
+      {
+        autoAlpha: 0,
+        backgroundColor: "transparent",
+        delay: 1,
+      },
+      ">-1"
+    );
+}
 document.addEventListener("DOMContentLoaded", () => {
   const movieImgParent = document.querySelector("#movieImgParent");
   carouselInit();
+  introAnimation();
+  changeMovieImg(0);
   bgmPlayer();
 });
 
