@@ -1,3 +1,21 @@
+// 이미지 프리로드
+const preloadImages = [
+  "./placeholder/coffe_ph.svg",
+  "./placeholder/macbook_ph.svg",
+  "./placeholder/photoshop_ph.svg",
+  "./placeholder/tear_ph.svg",
+  "./imgs/background2x.png",
+  "./imgs/door.png",
+  "./imgs/fire.webp",
+  "./things/번뇌의 흔적.png",
+  "./things/생명 연장 수액.png",
+  "./things/손목 통증 제조기.png",
+  "./things/아마존 강의 눈물.png",
+];
+preloadImages.forEach((src) => {
+  const img = new Image();
+  img.src = src;
+});
 import JSZip from "jszip";
 
 import "./style.css";
@@ -161,15 +179,15 @@ window.addEventListener("keydown", (e) => {
 
 // 이미지 다운
 const placeholderFiles = [
-  { name: "번뇌의 흔적.png", path: "./public/things/번뇌의 흔적.png" },
-  { name: "생명 연장 수액.png", path: "./public/things/생명 연장 수액.png" },
+  { name: "번뇌의 흔적.png", path: "./things/번뇌의 흔적.png" },
+  { name: "생명 연장 수액.png", path: "./things/생명 연장 수액.png" },
   {
     name: "손목 통증 제조기.png",
-    path: "./public/things/손목 통증 제조기.png",
+    path: "./things/손목 통증 제조기.png",
   },
   {
     name: "아마존 강의 눈물.png",
-    path: "./public/things/아마존 강의 눈물.png",
+    path: "./things/아마존 강의 눈물.png",
   },
 ];
 
