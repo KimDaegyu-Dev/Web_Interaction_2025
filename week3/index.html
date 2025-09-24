@@ -92,6 +92,25 @@
       </div>
     </div>
     <div
+      class="absolute top-40 w-screen text-center z-20 backdrop-blur-[2px]"
+      id="intro-placeholders"
+    >
+      <img src="./favicon.png" class="w-30 h-30 mx-auto" />
+      <h1 class="text-4xl text-amber-500 font-black">
+        얻오비 신당에 어서오세요
+      </h1>
+      <p
+        class="text-2xl text-white/70 mt-2 text-shadow-black"
+        style="
+          text-shadow: -1px 0 rgb(75, 75, 75, 0.4), 0 1px rgb(75, 75, 75, 0.4),
+            1px 0 rgb(75, 75, 75, 0.4), 0 -1px rgb(75, 75, 75, 0.4);
+        "
+      >
+        디자인이 잘 안풀리는 당신을 위한, 디지털 굿
+      </p>
+    </div>
+    <div
+      id="download-placeholders"
       style="
         position: absolute;
         left: 50%;
@@ -100,12 +119,7 @@
         z-index: 11;
       "
     >
-      <div>
-        <h1>얻오비 신당에 어서오세요</h1>
-        <p>디자인이 잘 안풀리는 당신을 위한, 디지털 굿</p>
-      </div>
       <button
-        id="download-placeholders"
         class="bg-amber-700 text-white px-4 py-2 rounded shadow hover:bg-amber-500 transition"
       >
         신당에 입장하기
@@ -114,8 +128,7 @@
     <div id="img-wrapper" class="absolute w-screen h-screen overflow-hidden">
       <div
         id="background"
-        src="./imgs/sindang.png"
-        class="bsolute top-0 left-0 object-cover will-change-transform"
+        class="absolute top-0 left-0 object-cover will-change-transform"
         draggable="false"
       ></div>
     </div>

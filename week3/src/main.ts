@@ -1,10 +1,15 @@
+import JSZip from "jszip";
+import "./style.css";
+import gsap from "gsap";
+import TextPlugin from "gsap/TextPlugin";
+
 // 이미지 프리로드
 const preloadImages = [
   "./placeholder/coffe_ph.svg",
   "./placeholder/macbook_ph.svg",
   "./placeholder/photoshop_ph.svg",
   "./placeholder/tear_ph.svg",
-  "./imgs/background2x.png",
+  "./imgs/sindang.png",
   "./imgs/door.png",
   "./imgs/fire.webp",
   "./things/번뇌의 흔적.png",
@@ -16,11 +21,8 @@ preloadImages.forEach((src) => {
   const img = new Image();
   img.src = src;
 });
-import JSZip from "jszip";
 
-import "./style.css";
-import gsap from "gsap";
-import TextPlugin from "gsap/TextPlugin";
+// 애니메이션
 gsap.registerPlugin(TextPlugin);
 let leftDoor = document.querySelector("#left-door");
 let rightDoor = document.querySelector("#right-door");
@@ -114,7 +116,6 @@ placeholders.forEach(({ imgId, inputId, filenameId }) => {
         gsap.to(fire, {
           autoAlpha: 1,
         });
-        // show
       }
     } else {
       filenameDiv.textContent = "";
@@ -144,28 +145,28 @@ const gods = [
   },
   {
     name: "스토리지 산신",
-    msg: "너의 기록은 오래 보존되리라.",
+    msg: "너의 파일은 깨지지 않으리라.",
     effect: "🗻",
   },
   {
     name: "버그의 잡귀",
-    msg: "이 파일에 흉운이 깃들었구나.",
+    msg: "너의 파일에 접근 할 수 없구나🥲.",
     effect: "👻",
   },
   {
-    name: "로그의 조상신",
-    msg: "과거의 발자취가 드러난다.",
+    name: "저장의 조상신",
+    msg: "저장을 습관화하거라.",
     effect: "📜",
   },
   {
     name: "픽셀의 불꽃신",
-    msg: "너의 제물이 불꽃으로 승화한다!",
+    msg: "너의 영감을 불태워주리라.",
     effect: "🔥",
   },
 ];
 function handleAllFilesUploaded() {
   const god = gods[Math.floor(Math.random() * gods.length)];
-  alert(`${god.name} 등장!\n「${god.msg}」`);
+  alert(`${god.effect}${god.name} 등장!\n「${god.msg}」`);
 }
 
 window.addEventListener("keydown", (e) => {
@@ -192,10 +193,14 @@ const placeholderFiles = [
 ];
 
 let startButton = document.querySelector("#download-placeholders");
+let introText = document.querySelector("#intro-placeholders");
 
 async function downloadPlaceholdersZip() {
   const zip = new JSZip();
   gsap.to(startButton, {
+    autoAlpha: 0,
+  });
+  gsap.to(introText, {
     autoAlpha: 0,
   });
   tl.play();
