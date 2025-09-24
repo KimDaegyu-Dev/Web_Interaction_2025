@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>얻오비 신당</title>
+  </head>
+  <body class="overflow-hidden w-screen h-screen">
+    <div id="app"></div>
+    <div
+      id="placeholder-inputs"
+      class="absolute z-10 p-0.5 inline-flex w-full justify-around px-54 items-center gap-0.5 top-[51vh]"
+      style="visibility: hidden"
+    >
+      <div class="placeholder-item">
+        <label for="input-coffee" class="w-[140px] h-[140px]">
+          <img
+            id="ph-coffee"
+            src="./public/placeholder/coffe_ph.svg"
+            draggable="false"
+            class="w-[140px] h-[140px] object-bottom object-none"
+            draggable="false"
+          />
+        </label>
+        <input type="file" accept="image/*" id="input-coffee" class="hidden" />
+        <div
+          id="filename-coffee"
+          style="font-size: 0.9rem; color: #cbcbcb; margin-top: 0.5rem"
+          class="text-center"
+        >
+          선택된 제물 없음
+        </div>
+      </div>
+      <div class="placeholder-item">
+        <label for="input-macbook" class="w-[140px] h-[140px]">
+          <img
+            id="ph-macbook"
+            src="./public/placeholder/macbook_ph.svg"
+            class="w-[140px] h-[140px] object-bottom object-scale-down"
+            draggable="false"
+          />
+        </label>
+        <input type="file" accept="image/*" id="input-macbook" class="hidden" />
+        <div
+          id="filename-macbook"
+          style="font-size: 0.9rem; color: #cbcbcb; margin-top: 0.5rem"
+          class="text-center"
+        >
+          선택된 제물 없음
+        </div>
+      </div>
+      <div class="placeholder-item">
+        <label for="input-photoshop" class="w-[140px] h-[140px]">
+          <img
+            id="ph-photoshop"
+            src="./public/placeholder/photoshop_ph.svg"
+            class="w-[140px] h-[140px] object-bottom object-scale-down"
+            draggable="false"
+        /></label>
+        <input
+          type="file"
+          accept="image/*"
+          id="input-photoshop"
+          class="hidden"
+        />
+        <div
+          id="filename-photoshop"
+          style="font-size: 0.9rem; color: #cbcbcb; margin-top: 0.5rem"
+          class="text-center"
+        >
+          선택된 제물 없음
+        </div>
+      </div>
+      <div class="placeholder-item">
+        <label for="input-tear" class="w-[140px] h-[140px]">
+          <img
+            id="ph-tear"
+            src="./public/placeholder/tear_ph.svg"
+            class="w-[140px] h-[140px] object-bottom object-none"
+            draggable="false"
+          />
+        </label>
+        <input type="file" accept="image/*" id="input-tear" class="hidden" />
+        <div
+          id="filename-tear"
+          style="font-size: 0.9rem; color: #cbcbcb; margin-top: 0.5rem"
+          class="text-center"
+        >
+          선택된 제물 없음
+        </div>
+      </div>
+    </div>
+    <div
+      style="
+        position: absolute;
+        left: 50%;
+        top: calc(51vh + 160px);
+        transform: translateX(-50%);
+        z-index: 11;
+      "
+    >
+      <button
+        id="download-placeholders"
+        class="bg-amber-700 text-white px-4 py-2 rounded shadow hover:bg-amber-500 transition"
+      >
+        신당에 입장하기
+      </button>
+    </div>
+    <div id="img-wrapper" class="absolute w-screen h-screen overflow-hidden">
+      <div
+        id="background"
+        src="./imgs/background2x.png"
+        class="bsolute top-0 left-0 object-cover will-change-transform"
+        draggable="false"
+      ></div>
+    </div>
+    <div id="intro" class="w-full h-full">
+      <img
+        src="./imgs/door.png"
+        id="left-door"
+        class="w-[50%] h-screen absolute"
+        draggable="false"
+      />
+
+      <img
+        src="./imgs/door.png"
+        id="right-door"
+        class="w-[50%] h-screen absolute left-[50%]"
+        draggable="false"
+      />
+    </div>
+    <div
+      class="absolute bottom-67 flex justify-center w-full pl-4 invisible"
+      id="fire"
+    >
+      <img
+        src="./imgs/fire.webp"
+        class="object-bottom object-scale-down w-30 h-30"
+      />
+      <div
+        class="absolute -bottom-30 flex justify-center w-full pl-4 text-center text-2xl text-gray-400 font-bold"
+        id="fireText"
+      >
+        ctrl + s를 누르세요
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
