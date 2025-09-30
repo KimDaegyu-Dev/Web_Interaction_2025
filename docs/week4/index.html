@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>양과 함께 잠을</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Song+Myung&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Chiron+Sung+HK:ital,wght@0,200..900;1,200..900&family=Grandiflora+One&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        cursor: none;
+      }
+      canvas {
+        display: block;
+      }
+      .background {
+        position: absolute;
+        z-index: -1;
+        height: 100%;
+        width: 120%;
+        object-position: bottom;
+        object-fit: cover;
+      }
+      /* 상단 중앙 고정 섹션 */
+      .top-center-hero {
+        position: absolute;
+        top: 10vh; /* 화면 상단에서 살짝 아래 */
+        left: 50%;
+        transform: translateX(-50%); /* 가로 정중앙 정렬 */
+        width: min(90%, 900px);
+        text-align: center;
+        padding: 0 1rem;
+        z-index: 10;
+      }
+
+      .top-center-hero h2 {
+        font-family: "Grandiflora One", "Song Myung", "Gowun Batang", serif;
+        font-weight: 400;
+        font-size: clamp(28px, 5vw, 56px);
+        line-height: 1.15;
+        letter-spacing: 0.2px;
+        margin: 0 0 14px 0;
+        color: var(--key);
+        /* 밤하늘에 은은한 발광 */
+        text-shadow: 0 0 12px var(--glow), 0 1px 0 rgba(0, 0, 0, 0.35);
+      }
+
+      .top-center-hero p {
+        font-size: clamp(15px, 2.2vw, 20px);
+        line-height: 1.85;
+        color: var(--fg);
+        font-family: "Chiron Sung HK", serif;
+        opacity: 0.9; /* 너무 튀지 않도록 살짝 투명 */
+        margin: 0;
+        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+      }
+      :root {
+        /* 밤하늘 테마 컬러 토큰 */
+        --bg-top: #0a0f1f; /* 상단 밤하늘 */
+        --bg-bottom: #02050d; /* 하단 더 짙게 */
+        --fg: rgba(255, 255, 255, 0.82); /* 본문 텍스트(살짝 투명) */
+        --fg-muted: rgba(255, 255, 255, 0.72); /* 보조 텍스트 */
+        --key: hsla(210, 100%, 70%, 0.92); /* 제목 키 컬러: 푸른 달빛 */
+        --glow: rgba(124, 186, 255, 0.28); /* 은은한 글로우 */
+      }
+    </style>
+  </head>
+  <body>
+    <section class="top-center-hero" aria-label="상단 소개">
+      <h2>생각은 내려놓고, 양과 놀기</h2>
+      <p>
+        생각이 많아 잠에 들지 못하는 당신<br />
+        잠시 모든걸 놓고 양과 노는건 어떄?
+      </p>
+    </section>
+
+    <img class="background" src="./background.png" draggable="false" />
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+
+    <audio id="bgm" src="./music.mp3" loop preload="auto" autoplay></audio>
+    <script>
+      const audio = document.getElementById("bgm");
+
+      // 1) 자동재생 정책을 통과하기 위해 우선 음소거로 재생 시도
+      audio.muted = true;
+      audio.play().catch(() => {});
+
+      // 2) 사용자가 처음 상호작용하면 음소거 해제 + 재생 보장
+      function enableSound() {
+        if (audio.paused) audio.play();
+        audio.muted = false;
+
+        // 한 번 설정 후 리스너 제거
+        window.removeEventListener("pointerdown", enableSound);
+        window.removeEventListener("touchstart", enableSound);
+        window.removeEventListener("keydown", enableSound);
+      }
+
+      window.addEventListener("pointerdown", enableSound, { once: true });
+      window.addEventListener("touchstart", enableSound, { once: true });
+      window.addEventListener("keydown", enableSound, { once: true });
+
+      // 탭 전환 후 돌아왔을 때 이어서 재생
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && audio.paused) {
+          audio.play().catch(() => {});
+        }
+      });
+    </script>
+
+    <!-- 교수님 이 태그를 보시면 됩니다!! -->
+    <script>
+      // ----- THREE.js 기본 세팅 -----
+      const aspect = window.innerWidth / window.innerHeight;
+      const cameraSize = 10;
+
+      const camera = new THREE.OrthographicCamera(
+        -cameraSize * aspect, // left
+        cameraSize * aspect, // right
+        cameraSize, // top
+        -cameraSize, // bottom
+        0.1,
+        1000
+      );
+      // 줌 인
+      camera.position.set(0, 0, 6); // XY 평면 바라보기
+      camera.lookAt(0, 0, 0);
+
+      camera.zoom = 2;
+      camera.updateProjectionMatrix();
+
+      const scene = new THREE.Scene();
+      //   scene.background = new THREE.Color(0xffffff);
+
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+      });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      const light = new THREE.DirectionalLight(0xffffff, 1);
+      light.position.set(5, 10, 5);
+      scene.add(light);
+      scene.add(new THREE.AmbientLight(0x909090));
+
+      // ----- CANNON.js 물리 월드 -----
+      const world = new CANNON.World({
+        gravity: new CANNON.Vec3(0, -9.82, 0),
+      });
+      world.gravity.set(0, -9.82, 0);
+      // ----- 땅 (y=-6) -----
+      const groundBody = new CANNON.Body({
+        mass: 0,
+        shape: new CANNON.Plane(),
+      });
+      groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+      groundBody.position.set(0, -6, 0);
+      world.addBody(groundBody);
+
+      const groundMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(50, 5),
+        new THREE.MeshPhongMaterial({ color: new THREE.Color("#ffff00") })
+      );
+      //   groundMesh.rotation.x = -Math.PI / 2;
+      groundMesh.position.y = -6;
+      //   scene.add(groundMesh);
+
+      // ----- Rope 생성 -----
+      const ropeBodies = [];
+      const ropeMeshes = [];
+      const segments = 12;
+      const ropeLength = 12;
+      const segmentLength = ropeLength / segments;
+
+      const sphereGeo = new THREE.SphereGeometry(0.1, 0, 0);
+      //   sphereGeo.position.y = -1;
+      const sphereMat = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+
+      let prevBody = null;
+      for (let i = 0; i <= segments; i++) {
+        const mass = i === 0 ? 0 : 0.1;
+        const body = new CANNON.Body({
+          mass,
+          shape: new CANNON.Sphere(0.1),
+          position: new CANNON.Vec3(
+            0,
+            i === 0 ? 0 : ropeLength - i * segmentLength,
+            i === 0 ? -3 : 0
+          ),
+        });
+
+        // 감쇠 추가
+        body.linearDamping = 0.5; // 값은 0~1 (0=저항없음, 1=즉시 멈춤)
+        body.angularDamping = 0.2;
+
+        world.addBody(body);
+        ropeBodies.push(body);
+
+        const mesh = new THREE.Mesh(sphereGeo, sphereMat);
+        // 디버깅용, 로프 스피어 숨기기
+        // scene.add(mesh);
+        ropeMeshes.push(mesh);
+
+        if (prevBody) {
+          const constraint = new CANNON.DistanceConstraint(
+            prevBody,
+            body,
+            segmentLength * 0.5
+          );
+          world.addConstraint(constraint);
+        }
+
+        prevBody = body;
+      }
+      //   왼쪽 끝 원형ㅇ로 돌리기
+      world.addEventListener("postStep", () => {
+        const radius = 0.5;
+        const speed = 2;
+        const t = world.time * speed;
+
+        // 왼쪽 끝
+        ropeBodies[0].position.set(
+          Math.cos(t) * radius + 0.5,
+          Math.sin(t) * radius - 0.5,
+          -3
+        );
+        ropeBodies[0].velocity.setZero();
+      });
+      //   로프 바디 최대 속도
+      world.addEventListener("postStep", () => {
+        ropeBodies.forEach((b) => {
+          const maxVel = 25; // 최대 속도
+          const v = b.velocity;
+
+          const speed = v.length();
+          if (speed > maxVel) {
+            v.scale(maxVel / speed, v); // 속도 벡터 크기를 줄임
+          }
+        });
+      });
+      // ----- Rope 끝에 박스 매달기 -----
+      const boxSize = 0.5;
+      const boxBody = new CANNON.Body({
+        mass: 0.1,
+        shape: new CANNON.Box(
+          new CANNON.Vec3(boxSize / 2, boxSize / 2, boxSize / 2)
+        ),
+        position: new CANNON.Vec3(0, ropeLength - segments * segmentLength, 3),
+      });
+      world.addBody(boxBody);
+
+      const leftHandTexture = new THREE.TextureLoader().load("./left-hand.png");
+      const leftHandMaterial = new THREE.SpriteMaterial({
+        map: leftHandTexture,
+        transparent: true,
+      });
+      const leftHandMesh = new THREE.Sprite(leftHandMaterial);
+      leftHandMesh.scale.y = 1.1;
+      scene.add(leftHandMesh);
+
+      const handTexture = new THREE.TextureLoader().load("./hand.png");
+      const handMaterial = new THREE.SpriteMaterial({
+        map: handTexture,
+        transparent: true,
+      });
+      const handMesh = new THREE.Sprite(handMaterial);
+      scene.add(handMesh);
+
+      //   마지막 로프 스피어와 오른손과의 거리
+      const lastRopeBody = ropeBodies[ropeBodies.length - 1];
+      const boxConstraint = new CANNON.DistanceConstraint(
+        lastRopeBody,
+        boxBody,
+        0.1
+      );
+      world.addConstraint(boxConstraint);
+
+      // Rope 시각화 (Line)
+      //   const ropeGeometry = new THREE.BufferGeometry().setFromPoints(
+      //     ropeBodies.map(
+      //       (b) => new THREE.Vector3(b.position.x, b.position.y, b.position.z)
+      //     )
+      //   );
+      const curve = new THREE.CatmullRomCurve3(
+        ropeBodies.map(
+          (b) => new THREE.Vector3(b.position.x, b.position.y, b.position.z)
+        )
+      );
+      const ropeTexture = new THREE.TextureLoader().load("./rope-color.jpg");
+      function makeToonRamp(steps = 4) {
+        const data = new Uint8Array(steps * 3);
+        for (let i = 0; i < steps; i++) {
+          const v = Math.round((i / (steps - 1)) * 255);
+          data[i * 3 + 0] = v;
+          data[i * 3 + 1] = v;
+          data[i * 3 + 2] = v;
+        }
+        const tex = new THREE.DataTexture(data, 1, steps, THREE.RGBFormat);
+        tex.minFilter = THREE.NearestFilter;
+        tex.magFilter = THREE.NearestFilter;
+        tex.generateMipmaps = false;
+        tex.needsUpdate = true;
+        return tex;
+      }
+      const ramp = makeToonRamp(4);
+      const ropeGeometry = new THREE.TubeGeometry(curve, 64, 3, 8, false);
+      const ropeMaterial = new THREE.MeshToonMaterial({
+        map: ropeTexture,
+        color: 0xffffff,
+        gradientMap: ramp,
+      });
+      ropeMaterial.onBeforeCompile = (shader) => {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          "#include <map_fragment>",
+          `#include <map_fragment>
+      // 텍스처 색을 N단계로 양자화
+      const float POSTERIZE_STEPS = 5.0;
+      diffuseColor.rgb = floor(diffuseColor.rgb * POSTERIZE_STEPS) / POSTERIZE_STEPS;
+      `
+        );
+      };
+      ropeMaterial.color.multiplyScalar(1.8);
+
+      const ropeMesh = new THREE.Mesh(ropeGeometry, ropeMaterial);
+
+      scene.add(ropeMesh);
+
+      // ----- Character Sprite (단순 Texture Plane) -----
+      const texture = new THREE.TextureLoader().load("./sheep-ss.png");
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      const framesPerRow = 8;
+      const framesPerColumn = 3;
+      texture.repeat.set(1 / framesPerRow, 1 / framesPerColumn);
+
+      const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+      });
+      const character = new THREE.Sprite(material);
+      character.position.set(-12, -3, 0); // 왼쪽 시작
+      character.scale.set(1.6, 1.6, 1.6);
+      scene.add(character);
+
+      let leftBound = window.innerWidth / 2;
+      let rightBound = window.innerWidth / 2;
+
+      // ===== 상태 머신 =====
+      let state = "walking"; // "walking", "jumping", "falling"
+      let frameIndex = 0;
+      let frameTimer = 0;
+
+      // 각 상태별 프레임 범위
+      const animations = {
+        walking: { start: 0, end: 7, speed: 0.05 },
+        jumping: { start: 0, end: 7, speed: 0.1 },
+        falling: { start: 0, end: 7, speed: 0.5 },
+      };
+
+      // ===== 스프라이트 프레임 갱신 함수 =====
+      function updateSprite(delta) {
+        frameTimer += delta;
+
+        const anim = animations[state];
+        if (frameTimer >= anim.speed) {
+          frameTimer = 0;
+          frameIndex++;
+          if (frameIndex >= anim.end) {
+            if (state === "falling") {
+              frameIndex = anim.end; // 넘어짐은 마지막 프레임에서 멈춤
+            } else {
+              if (state === "walking") {
+                texture.offset.y = 1 / framesPerColumn;
+              } else if (state === "jumping") {
+                texture.offset.y = 2 / framesPerColumn;
+              }
+              frameIndex = anim.start; // 걷기/점프는 반복
+            }
+          }
+        }
+
+        // UV offset 적용
+        const u = frameIndex / framesPerRow;
+        texture.offset.x = u;
+      }
+      // progress 0~1을 순환시키면서 이동
+      let t = 0;
+      let jumping = false;
+      let jumpTime = 0;
+
+      const jumpDuration = 0.2; // 점프 전체 시간
+      const jumpHeight = 3.0 + (Math.random() - 0.5); // 최고 높이
+      function updateCharacter(step, character, ropeBodies) {
+        const g = (8 * jumpHeight) / (jumpDuration * jumpDuration); // 중력 가속도
+        const v0 = (g * jumpDuration) / 2; // 초기 속도 (최고점에서 속도 0 되도록)
+        const left = -15;
+        const right = 15;
+
+        // 추락
+
+        if (state === "falling") {
+          updateSprite(0.1); // 프레임 속도는 고정값
+          jumpTime += step;
+          if (jumpTime >= jumpDuration) {
+            // 시체 시간
+            if (jumpTime >= jumpDuration + 0.1) {
+              jumping = false;
+              state = "walking";
+            }
+            character.position.y = -3;
+          } else {
+            const y = -3 + v0 * jumpTime - 0.5 * g * jumpTime * jumpTime;
+            character.position.x += step * 7;
+            character.position.y = y;
+          }
+          t = 0;
+          return;
+        }
+
+        // 걷기 이동 (임의 step 크기만큼 t 증가)
+        t += step;
+        if (t > 1) {
+          t = 0;
+          jumping = false;
+          state = "walking";
+          texture.offset.y = 1 / framesPerColumn;
+          if (state !== "falling") frameIndex = animations[state].start;
+        }
+        character.position.x = left + (right - left) * t;
+        const randomTiming = (Math.random() - 0.5) * 0.2;
+        // 중앙 근처에서 점프 시작
+        if (!jumping && t > 0.45 + randomTiming && t < 0.5 + randomTiming) {
+          jumping = true;
+          state = "jumping";
+          texture.offset.y = 2 / framesPerColumn;
+          if (state !== "falling") frameIndex = animations[state].start;
+          jumpTime = 0;
+        }
+        // 점프 애니메이션 (sine 곡선)
+        if (jumping) {
+          jumpTime += step;
+          if (jumpTime >= jumpDuration) {
+            jumping = false;
+            state = "walking";
+            character.position.y = -3;
+          } else {
+            const y = -3 + v0 * jumpTime - 0.5 * g * jumpTime * jumpTime;
+            character.position.y = y;
+          }
+        }
+
+        // 밧줄 충돌 체크
+        const collided = checkRopeCollision(character, ropeBodies, 0.3);
+        if (collided && state !== "falling") {
+          state = "falling";
+          texture.offset.y = 3 / framesPerColumn;
+          frameIndex = animations[state].start;
+        }
+        // 프레임 갱신
+        if (state !== "falling") updateSprite(0.01);
+        return;
+      }
+      function checkRopeCollision(
+        characterSprite,
+        ropeBodies,
+        threshold = 0.5
+      ) {
+        // 1) 스프라이트의 월드 기준 AABB
+        const charBox = new THREE.Box3().setFromObject(characterSprite);
+
+        // 2) 임계거리만큼 팽창 (거리 < threshold ↔ 팽창 박스와 선분 교차)
+        const padded = charBox.clone().expandByScalar(threshold);
+
+        // 3) 로프 세그먼트와 교차 검사
+        const a = new THREE.Vector3();
+        const b = new THREE.Vector3();
+        const seg = new THREE.Line3(a, b);
+
+        for (let i = 0; i < ropeBodies.length - 1; i++) {
+          // ropeBodies[i].position 이 THREE.Vector3가 아니면 값만 복사
+          a.set(
+            ropeBodies[i].position.x,
+            ropeBodies[i].position.y,
+            ropeBodies[i].position.z
+          );
+          b.set(
+            ropeBodies[i + 1].position.x,
+            ropeBodies[i + 1].position.y,
+            ropeBodies[i + 1].position.z
+          );
+          if (segmentIntersectsBox(a, b, charBox)) return true;
+        }
+        return false;
+      }
+      // 재사용용 임시 객체 (할당 줄이기)
+      const _segDir = new THREE.Vector3();
+      const _hit = new THREE.Vector3();
+      const _ray = new THREE.Ray();
+
+      function segmentIntersectsBox(a, b, box) {
+        // a,b: THREE.Vector3 (세그먼트 양끝), box: THREE.Box3 (월드 AABB)
+
+        // 한 점이라도 안에 있으면 교차
+        if (box.containsPoint(a) || box.containsPoint(b)) return true;
+
+        // 레이로 변환: a → b 방향
+        _segDir.copy(b).sub(a);
+        const len = _segDir.length();
+        if (len === 0) return box.containsPoint(a); // 길이 0 세그먼트
+
+        _segDir.divideScalar(len); // 정규화
+        _ray.set(a, _segDir);
+
+        // 박스와의 교차점(가장 가까운 한 점)을 얻고,
+        // 그 점이 세그먼트 길이 안(0..len)에 있으면 교차로 본다.
+        const p = _ray.intersectBox(box, _hit);
+        return !!p && p.distanceTo(a) <= len + 1e-8;
+      }
+      // ----- 마우스 인터렉션 (XY 평면만) -----
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+      let isDragging = false;
+      const mouseBody = new CANNON.Body({ mass: 0 });
+      world.addBody(mouseBody);
+
+      // --- 드래그 시작 ---
+      //   window.addEventListener("mousedown", (event) => {
+      //     // 마우스 좌표 → NDC
+      //     const mouse = new THREE.Vector2(
+      //       (event.clientX / window.innerWidth - 1) / 2,
+      //       (-(event.clientY / window.innerHeight) + 1) / 2
+      //     );
+      //     raycaster.setFromCamera(mouse, camera);
+
+      //     // 박스 mesh와 충돌 검사
+      //     const intersects = raycaster.intersectObject(handMesh);
+      //     // if (intersects.length > 0) {
+      //     // constraint 생성 (박스 ↔ 마우스 가상 body)
+      //     dragConstraint = new CANNON.PointToPointConstraint(
+      //       boxBody,
+      //       new CANNON.Vec3(0, 0, 0), // 박스 중심
+      //       mouseBody,
+      //       new CANNON.Vec3(0, 0, 0) // 마우스 가상 body 중심
+      //     );
+
+      //     world.addConstraint(dragConstraint);
+      //     // }
+      //   });
+
+      dragConstraint = new CANNON.PointToPointConstraint(
+        boxBody,
+        new CANNON.Vec3(0, 0, 0), // 박스 중심
+        mouseBody,
+        new CANNON.Vec3(0, 0, 0) // 마우스 가상 body 중심
+      );
+      world.addConstraint(dragConstraint);
+      // --- 드래그 중 ---
+      window.addEventListener("mousemove", (event) => {
+        // if (!dragConstraint) return;
+
+        // 마우스 좌표를 world 좌표로 변환 (OrthographicCamera 기준)
+        const mouse = new THREE.Vector3(
+          (event.clientX / window.innerWidth) * 2 - 1,
+          -(event.clientY / window.innerHeight) * 2 + 1,
+          0
+        );
+        mouse.unproject(camera);
+
+        // 원 중심과 반지름 설정
+        const center = new THREE.Vector2(0, 0); // 원의 중심 (0,0)
+        const radius = 2; // 허용 반지름
+
+        // 현재 좌표를 2D 벡터로
+        const pos2D = new THREE.Vector2(mouse.x, mouse.y);
+
+        // 중심에서의 벡터
+        const offset = pos2D.clone().sub(center);
+        const dist = offset.length();
+
+        let clampedPos;
+        if (dist > radius) {
+          // 반지름을 넘으면 원 둘레에 맞게 정규화
+          offset.normalize().multiplyScalar(radius);
+          clampedPos = center.clone().add(offset);
+        } else {
+          clampedPos = pos2D;
+        }
+
+        mouseBody.position.set(clampedPos.x, clampedPos.y, 3);
+      });
+
+      // --- 드래그 끝 ---
+      //   window.addEventListener("mouseup", () => {
+      //     if (dragConstraint) {
+      //       world.removeConstraint(dragConstraint);
+      //       dragConstraint = null;
+      //     }
+      //   });
+
+      // ----- 애니메이션 루프 -----
+      function animate() {
+        requestAnimationFrame(animate);
+
+        world.step(1 / 60);
+        const step = 0.002;
+        // Rope 구체 업데이트
+        for (let i = 0; i < ropeBodies.length; i++) {
+          if (i == 0) {
+            ropeMeshes[i].position.copy(ropeBodies[i].position);
+          } else {
+            ropeMeshes[i].position.copy(ropeBodies[i].position);
+          }
+        }
+        updateCharacter(step, character, ropeBodies);
+
+        // Rope 라인 업데이트
+        const positions = ropeBodies.map(
+          (b) => new THREE.Vector3(b.position.x, b.position.y, b.position.z)
+        );
+        positions.push(
+          new THREE.Vector3(
+            boxBody.position.x,
+            boxBody.position.y,
+            boxBody.position.z
+          )
+        );
+        // ropeGeometry.setFromPoints(positions);
+        // CatmullRomCurve3 갱신
+        const points = ropeBodies.map(
+          (b) => new THREE.Vector3(b.position.x, b.position.y, b.position.z)
+        );
+        const curve = new THREE.CatmullRomCurve3(points);
+        // TubeGeometry 다시 생성 (주의: 매 프레임 새로 생성은 비용이 큼)
+        ropeMesh.geometry.dispose();
+        const ropeRadious = 0.12;
+        ropeMesh.geometry = new THREE.TubeGeometry(
+          curve,
+          32,
+          ropeRadious,
+          12,
+          false
+        );
+
+        // 박스 업데이트
+        leftHandMesh.position.copy(ropeBodies[0].position);
+        console.log(ropeBodies[0]);
+        leftHandMesh.position.z = -3;
+        leftHandMesh.position.y += 0.2;
+        handMesh.position.copy(boxBody.position);
+        handMesh.position.z = 3;
+
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      window.addEventListener("resize", () => {
+        const aspect = window.innerWidth / window.innerHeight;
+        camera.left = -cameraSize * aspect;
+        camera.right = cameraSize * aspect;
+        camera.top = cameraSize;
+        camera.bottom = -cameraSize;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    </script>
+  </body>
+</html>
