@@ -1,5 +1,5 @@
 (async ()=>{
-    const de = "/assets/game_of_life_bg-24a34a7b.wasm", le = async (e = {}, t)=>{
+    const de = "" + new URL("game_of_life_bg-24a34a7b.wasm", import.meta.url).href, le = async (e = {}, t)=>{
         let n;
         if (t.startsWith("data:")) {
             const o = t.replace(/^data:.*?base64,/, "");
@@ -26,22 +26,22 @@
         c = e;
     }
     let k = null;
-    function T() {
+    function L() {
         return (k === null || k.byteLength === 0) && (k = new Uint8Array(c.memory.buffer)), k;
     }
     const J = typeof TextDecoder > "u" ? (0, module.require)("util").TextDecoder : TextDecoder;
-    let L = new J("utf-8", {
+    let T = new J("utf-8", {
         ignoreBOM: !0,
         fatal: !0
     });
-    L.decode();
+    T.decode();
     const ge = 2146435072;
     let W = 0;
     function fe(e, t) {
-        return W += t, W >= ge && (L = new J("utf-8", {
+        return W += t, W >= ge && (T = new J("utf-8", {
             ignoreBOM: !0,
             fatal: !0
-        }), L.decode(), W = t), L.decode(T().subarray(e, e + t));
+        }), T.decode(), W = t), T.decode(L().subarray(e, e + t));
     }
     function H(e, t) {
         return e = e >>> 0, fe(e, t);
@@ -59,10 +59,10 @@
     function Q(e, t, n) {
         if (n === void 0) {
             const l = M.encode(e), w = t(l.length, 1) >>> 0;
-            return T().subarray(w, w + l.length).set(l), B = l.length, w;
+            return L().subarray(w, w + l.length).set(l), B = l.length, w;
         }
         let o = e.length, _ = t(o, 1) >>> 0;
-        const s = T();
+        const s = L();
         let r = 0;
         for(; r < o; r++){
             const l = e.charCodeAt(r);
@@ -71,7 +71,7 @@
         }
         if (r !== o) {
             r !== 0 && (e = e.slice(r)), _ = n(_, o, o = r + e.length * 3, 1) >>> 0;
-            const l = T().subarray(_ + r, _ + o), w = be(e, l);
+            const l = L().subarray(_ + r, _ + o), w = be(e, l);
             r += w.written, _ = n(_, o, r, 1) >>> 0;
         }
         return B = r, _;
@@ -173,10 +173,10 @@
         var _ = he(o) ? 0 : Q(o, c.__wbindgen_malloc, c.__wbindgen_realloc), s = B;
         U().setInt32(e + 4 * 1, s, !0), U().setInt32(e + 4 * 0, _, !0);
     }
-    function Te(e, t) {
+    function Le(e, t) {
         return H(e, t);
     }
-    function Le(e, t) {
+    function Te(e, t) {
         throw new Error(H(e, t));
     }
     URL = globalThis.URL;
@@ -184,7 +184,7 @@
         "./game_of_life_bg.js": {
             __wbg_random_ed8db01c11e5a642: Ie,
             __wbindgen_string_get: ke,
-            __wbindgen_string_new: Te,
+            __wbindgen_string_new: Le,
             __wbg_new_8a6f238a6ece86ea: Ae,
             __wbg_stack_0ed75d68575b0f3c: xe,
             __wbg_error_7534b8e9a36f1ab4: me,
@@ -192,10 +192,10 @@
             __wbg_length_f00ec12454a5d9fd: ve,
             __wbg_new_58353953ad2097cc: Se,
             __wbg_push_73fd7b5550ebf707: Ee,
-            __wbindgen_throw: Le,
+            __wbindgen_throw: Te,
             __wbindgen_init_externref_table: Ce
         }
-    }, de), m = d.memory, Me = d.__wbg_world_free, Be = d.world_new, Ue = d.world_update_char_sets, Oe = d.world_tick, Re = d.world_width, De = d.world_height, Fe = d.world_get_consonant_grid_ptr, Ne = d.world_get_vowel_grid_ptr, We = d.world_get_syllable_grid_ptr, Pe = d.world_get_prev_consonant_grid_ptr, Ve = d.world_get_prev_vowel_grid_ptr, Ge = d.world_get_prev_syllable_grid_ptr, ze = d.world_toggle_cell, je = d.__wbindgen_free, He = d.__wbindgen_malloc, qe = d.__wbindgen_realloc, Ye = d.__wbindgen_export_3, ee = d.__wbindgen_start, Ke = Object.freeze(Object.defineProperty({
+    }, de), m = d.memory, Me = d.__wbg_world_free, Be = d.world_new, Ue = d.world_update_char_sets, Re = d.world_tick, Oe = d.world_width, De = d.world_height, Fe = d.world_get_consonant_grid_ptr, Ne = d.world_get_vowel_grid_ptr, We = d.world_get_syllable_grid_ptr, Pe = d.world_get_prev_consonant_grid_ptr, Ve = d.world_get_prev_vowel_grid_ptr, Ge = d.world_get_prev_syllable_grid_ptr, ze = d.world_toggle_cell, je = d.__wbindgen_free, He = d.__wbindgen_malloc, qe = d.__wbindgen_realloc, Ye = d.__wbindgen_export_3, ee = d.__wbindgen_start, Ke = Object.freeze(Object.defineProperty({
         __proto__: null,
         __wbg_world_free: Me,
         __wbindgen_export_3: Ye,
@@ -212,10 +212,10 @@
         world_get_vowel_grid_ptr: Ne,
         world_height: De,
         world_new: Be,
-        world_tick: Oe,
+        world_tick: Re,
         world_toggle_cell: ze,
         world_update_char_sets: Ue,
-        world_width: Re
+        world_width: Oe
     }, Symbol.toStringTag, {
         value: "Module"
     }));
@@ -234,18 +234,18 @@
         }
     }, q = (e)=>{
         if (!i) return;
-        const t = e.width(), n = e.height(), o = t * n, _ = e.get_consonant_grid_ptr(), s = e.get_vowel_grid_ptr(), r = e.get_syllable_grid_ptr(), l = e.get_prev_consonant_grid_ptr(), w = e.get_prev_vowel_grid_ptr(), b = e.get_prev_syllable_grid_ptr(), u = new Uint16Array(m.buffer, _, o), h = new Uint16Array(m.buffer, s, o), A = new Uint16Array(m.buffer, r, o), p = new Uint16Array(m.buffer, l, o), E = new Uint16Array(m.buffer, w, o), O = new Uint16Array(m.buffer, b, o);
+        const t = e.width(), n = e.height(), o = t * n, _ = e.get_consonant_grid_ptr(), s = e.get_vowel_grid_ptr(), r = e.get_syllable_grid_ptr(), l = e.get_prev_consonant_grid_ptr(), w = e.get_prev_vowel_grid_ptr(), b = e.get_prev_syllable_grid_ptr(), u = new Uint16Array(m.buffer, _, o), h = new Uint16Array(m.buffer, s, o), A = new Uint16Array(m.buffer, r, o), p = new Uint16Array(m.buffer, l, o), E = new Uint16Array(m.buffer, w, o), R = new Uint16Array(m.buffer, b, o);
         i.clearRect(0, 0, f.width, f.height), nt(t, n), i.textBaseline = "middle", i.textAlign = "center";
         for(let g = 0; g < o; g++){
-            const oe = Math.floor(g / t), _e = g % t, R = A[g] || u[g] || h[g], se = O[g] || p[g] || E[g];
-            if (R !== 0) {
-                if (R !== se) {
+            const oe = Math.floor(g / t), _e = g % t, O = A[g] || u[g] || h[g], se = R[g] || p[g] || E[g];
+            if (O !== 0) {
+                if (O !== se) {
                     const ie = (Math.random() - .5) * 2, ae = a * .5 * ie;
                     G[g] = a + ae;
                 }
                 const ce = G[g] || a;
                 i.font = `${ce}px "Noto Sans KR"`;
-                const D = String.fromCharCode(R), F = _e * (a + 1) + a / 2 + 1, N = oe * (a + 1) + a / 2 + 1;
+                const D = String.fromCharCode(O), F = _e * (a + 1) + a / 2 + 1, N = oe * (a + 1) + a / 2 + 1;
                 A[g] !== 0 ? (i.fillStyle = "black", i.fillText(D, F, N)) : u[g] !== 0 ? (i.fillStyle = "blue", i.fillText(D, F, N)) : h[g] !== 0 && (i.fillStyle = "red", i.fillText(D, F, N));
             }
         }
@@ -495,8 +495,8 @@
     f.addEventListener("click", (e)=>{
         const t = re(), n = f.getBoundingClientRect(), o = f.width / n.width, _ = f.height / n.height, s = (e.clientX - n.left) * o, r = (e.clientY - n.top) * _, l = Math.floor(r / (a + 1)), w = Math.floor(s / (a + 1)), b = dt.value, u = wt[b], h = lt.value, A = Math.random() > .5;
         u.forEach((p)=>{
-            const E = (l + p.row + t.height()) % t.height(), O = (w + p.col + t.width()) % t.width();
-            t.toggle_cell(E, O, h === "random" ? A ? "consonant" : "vowel" : h);
+            const E = (l + p.row + t.height()) % t.height(), R = (w + p.col + t.width()) % t.width();
+            t.toggle_cell(E, R, h === "random" ? A ? "consonant" : "vowel" : h);
         }), q(t);
     });
     window.addEventListener("resize", ()=>{
