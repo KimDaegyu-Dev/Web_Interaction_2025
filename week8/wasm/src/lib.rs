@@ -103,9 +103,11 @@ impl World {
     }
 
     pub fn tick(&mut self, silhouette: &[u8]) {
+        // 1. Save previous state
         self.prev_consonants = self.consonants.clone();
         self.prev_vowels = self.vowels.clone();
 
+        // 2. Evolve cells based on Game of Life rules
         let mut next_consonants = self.consonants.clone();
         let mut next_vowels = self.vowels.clone();
         let mut next_syllables = self.syllables.clone();
@@ -116,25 +118,14 @@ impl World {
                 let (consonant_n, vowel_n, total_n) = self.count_neighbors(row, col);
                 let is_in_silhouette = silhouette.get(idx).cloned().unwrap_or(0) == 1;
 
-                // --- Evolution Rules ---
                 if self.syllables[idx] { // Rule for existing syllables
-                    let survives = if is_in_silhouette {
-                        total_n >= 2 // Ignore overpopulation inside silhouette
-                    } else {
-                        total_n == 2 || total_n == 3 // Standard rule outside
-                    };
+                    let survives = if is_in_silhouette { total_n >= 2 } else { total_n == 2 || total_n == 3 };
                     next_syllables.set(idx, survives);
                 } else { // Rule for components
-                    let survives = if is_in_silhouette {
-                        total_n >= 2
-                    } else {
-                        total_n == 2 || total_n == 3
-                    };
+                    let survives = if is_in_silhouette { total_n >= 2 } else { total_n == 2 || total_n == 3 };
                     let can_be_born = total_n == 3;
-
                     let consonant_is_born = can_be_born && !self.consonants[idx] && (consonant_n > 0 || vowel_n == 0);
                     next_consonants.set(idx, (self.consonants[idx] && survives) || consonant_is_born);
-
                     let vowel_is_born = can_be_born && !self.vowels[idx] && (vowel_n > 0 || consonant_n == 0);
                     next_vowels.set(idx, (self.vowels[idx] && survives) || vowel_is_born);
                 }
@@ -145,24 +136,13 @@ impl World {
         self.vowels = next_vowels;
         self.syllables = next_syllables;
 
-        // --- Sync & Combination ---
-        let mut newly_formed_syllables: Vec<(usize, char, char)> = Vec::new();
+        // 3. Sync character grids
         for idx in 0..self.consonant_grid.len() {
             let is_in_silhouette = silhouette.get(idx).cloned().unwrap_or(0) == 1;
+            if !self.syllables[idx] { self.syllable_grid[idx] = 0; }
+            else if is_in_silhouette { self.syllable_grid[idx] = combine(self.get_random_consonant(), self.get_random_vowel(), None) as u16; }
 
-            // If a syllable died, clear its grid value. If it survived inside silhouette, re-randomize it.
-            if !self.syllables[idx] {
-                self.syllable_grid[idx] = 0;
-            } else if is_in_silhouette {
-                let new_c = self.get_random_consonant();
-                let new_v = self.get_random_vowel();
-                self.syllable_grid[idx] = combine(new_c, new_v, None) as u16;
-            }
-
-            // Sync Consonants
             if self.consonants[idx] {
-                if !self.prev_consonants[idx] || is_in_silhouette { // Assign new char if newly born OR inside silhouette
-                    self.consonant_grid[idx] = self.get_random_consonant() as u16;
                 }
             } else {
                 self.consonant_grid[idx] = 0;
@@ -170,13 +150,16 @@ impl World {
 
             // Sync Vowels
             if self.vowels[idx] {
-                if !self.prev_vowels[idx] || is_in_silhouette { // Assign new char if newly born OR inside silhouette
                     self.vowel_grid[idx] = self.get_random_vowel() as u16;
-                }
-            } else {
-                self.vowel_grid[idx] = 0;
-            }
+                if !self.prev_vowels[idx] || is_in_silhouette { self.vowel_grid[idx] = self.get_random_vowel() as u16; }
+            } else { self.vowel_grid[idx] = 0; }
+        }
+        
+        // 4. Combine & Attach Jongseong
+        let consonant_grid_copy = self.consonant_grid.clone();
+        let mut newly_formed_syllables: Vec<(usize, char, char)> = Vec::new();
 
+        for idx in 0..self.consonant_grid.len() {
             if self.consonant_grid[idx] > 0 && self.vowel_grid[idx] > 0 {
                 let consonant_char = std::char::from_u32(self.consonant_grid[idx] as u32).unwrap();
                 let vowel_char = std::char::from_u32(self.vowel_grid[idx] as u32).unwrap();
@@ -197,8 +180,8 @@ impl World {
             let final_consonant_row = (row + 1) % self.height;
             let final_idx = self.get_index(final_consonant_row, col);
             
-            if self.consonant_grid[final_idx] > 0 {
-                let potential_final = std::char::from_u32(self.consonant_grid[final_idx] as u32).unwrap();
+            if consonant_grid_copy[final_idx] > 0 {
+                let potential_final = std::char::from_u32(consonant_grid_copy[final_idx] as u32).unwrap();
                 if get_final_consonant_code(potential_final).is_some() {
                     self.syllable_grid[idx] = combine(initial, medial, Some(potential_final)) as u16;
                     self.consonant_grid[final_idx] = 0;

@@ -313,7 +313,7 @@ class App {
         vowelCells[i] !== 0 ||
         syllableCells[i] !== 0;
 
-      if (silhouetteGrid[i] === 1 && !isCellAlive && Math.random() < 0.2) {
+      if (silhouetteGrid[i] === 1 && !isCellAlive) {
         this.world.alive_cell(row, col, this.currentMode);
       }
     }
