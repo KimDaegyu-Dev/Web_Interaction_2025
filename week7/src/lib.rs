@@ -150,11 +150,11 @@ impl World {
                 // Determine next state for the consonant cell
                 let next_consonant_is_alive = match (current_consonant_cell, unique_live_neighbors) {
                     (Cell::Alive, n) => {
-                        if is_syllable {
-                            n == 4 // Syllables only survive with exactly 3 neighbors
-                        } else {
+                        // if is_syllable {
+                        //     n == 4 // Syllables only survive with exactly 3 neighbors
+                        // } else {
                             n == 2 || n == 3 // Lone consonants survive with 2 or 3
-                        }
+                        // }
                     },
                     (Cell::Dead, 3) => consonant_neighbors > 0 || vowel_neighbors == 0, // Birth rule
                     _ => false,
@@ -164,11 +164,11 @@ impl World {
                 // Determine next state for the vowel cell
                 let next_vowel_is_alive = match (current_vowel_cell, unique_live_neighbors) {
                      (Cell::Alive, n) => {
-                        if is_syllable {
-                            n == 4 // Syllables only survive with exactly 3 neighbors
-                        } else {
+                        // if is_syllable {
+                        //     n == 4 // Syllables only survive with exactly 3 neighbors
+                        // } else {
                             n == 2 || n == 3 // Lone vowels survive with 2 or 3
-                        }
+                        // }
                     },
                     (Cell::Dead, 3) => vowel_neighbors > 0 || consonant_neighbors == 0, // Birth rule
                     _ => false,
@@ -235,8 +235,8 @@ impl World {
                 let potential_final = std::char::from_u32(potential_final_char_code as u32).unwrap_or_default();
                 if get_final_consonant_code(potential_final).is_some() {
                     final_syllable_char = combine(initial, medial, Some(potential_final));
-                    self.consonant_grid[final_idx] = 0;
-                    self.consonants.set(final_idx, false);
+                    // self.consonant_grid[final_idx] = 0;
+                    // self.consonants.set(final_idx, false);
                 }
             }
             self.syllable_grid[idx] = final_syllable_char as u16;
