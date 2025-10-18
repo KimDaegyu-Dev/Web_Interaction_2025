@@ -320,4 +320,49 @@ impl World {
             self.syllable_grid[idx] = 0;
         }
     }
+
+    pub fn alive_cell(&mut self, row: u32, col: u32, cell_type: JsString) {
+        let idx = self.get_index(row, col);
+        
+        let type_str = cell_type.as_string().unwrap_or_default();
+        let is_consonant = match type_str.as_str() {
+            "consonant" => true,
+            "vowel" => false,
+            _ => random() > 0.5,
+        };
+
+        if is_consonant {
+            self.consonants.set(idx, true);
+            self.consonant_grid[idx] = self.get_random_consonant() as u16;
+        } else {
+            self.vowels.set(idx, true);
+            self.vowel_grid[idx] = self.get_random_vowel() as u16;
+        }
+    }
+
+    pub fn dead_cell(&mut self, row: u32, col: u32, cell_type: JsString) {
+        let idx = self.get_index(row, col);
+        
+        let type_str = cell_type.as_string().unwrap_or_default();
+        match type_str.as_str() {
+            "consonant" => {
+                self.consonants.set(idx, false);
+                self.consonant_grid[idx] = 0;
+            },
+            "vowel" => {
+                self.vowels.set(idx, false);
+                self.vowel_grid[idx] = 0;
+            },
+            _ => {
+                // "syllable" 또는 기본값인 경우 둘 다 죽이기
+                self.consonants.set(idx, false);
+                self.vowels.set(idx, false);
+                self.consonant_grid[idx] = 0;
+                self.vowel_grid[idx] = 0;
+            }
+        }
+
+        // 음절이 있었다면 제거
+        self.syllable_grid[idx] = 0;
+    }
 }
