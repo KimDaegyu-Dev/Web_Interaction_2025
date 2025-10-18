@@ -150,7 +150,14 @@ impl World {
         for idx in 0..self.consonant_grid.len() {
             let is_in_silhouette = silhouette.get(idx).cloned().unwrap_or(0) == 1;
 
-            if !self.syllables[idx] { self.syllable_grid[idx] = 0; }
+            // If a syllable died, clear its grid value. If it survived inside silhouette, re-randomize it.
+            if !self.syllables[idx] {
+                self.syllable_grid[idx] = 0;
+            } else if is_in_silhouette {
+                let new_c = self.get_random_consonant();
+                let new_v = self.get_random_vowel();
+                self.syllable_grid[idx] = combine(new_c, new_v, None) as u16;
+            }
 
             // Sync Consonants
             if self.consonants[idx] {
@@ -228,17 +235,19 @@ impl World {
         let idx = self.get_index(row, col);
         if self.syllables[idx] { return; }
         let type_str = cell_type.as_string().unwrap_or_default();
-        let is_consonant = match type_str.as_str() {
-            "consonant" => true,
-            "vowel" => false,
-            _ => random() > 0.5,
+        match type_str.as_str() {
+            "consonant" => {
+                if !self.consonants[idx] { self.consonants.set(idx, true); }
+            },
+            "vowel" => {
+                if !self.vowels[idx] { self.vowels.set(idx, true); }
+            },
+            _ => {
+                if !self.consonants[idx] { self.consonants.set(idx, true); }
+                if !self.vowels[idx] { self.vowels.set(idx, true); }
+            },
         };
 
-        if is_consonant {
-            if !self.consonants[idx] { self.consonants.set(idx, true); }
-        } else {
-            if !self.vowels[idx] { self.vowels.set(idx, true); }
-        }
     }
 
     pub fn kill_cell(&mut self, row: u32, col: u32) {
