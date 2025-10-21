@@ -138,6 +138,7 @@ const DescriptionStage: React.FC = () => {
         console.log("Stage 2 시작");
         setCurrentStage(1);
         setShowVideo(true);
+        setCanvasOpacity(0);
         setCurrentText(stageTexts[1]);
         setShowSubtitle(true);
         setStartTyping(true);
@@ -158,7 +159,7 @@ const DescriptionStage: React.FC = () => {
             duration: 2,
             onUpdate: function () {
               const progress = this.progress();
-              setCanvasOpacity(1 - progress * 0.4); // opacity 1 -> 0.6
+              setCanvasOpacity(progress * 0.6); // opacity 0 -> 0.6
             },
           }
         )
@@ -411,7 +412,7 @@ const DescriptionStage: React.FC = () => {
           textAlign: "center",
           color: "white",
           fontSize: "28px",
-          fontFamily: "Noto Sans KR, sans-serif",
+          fontFamily: "Grandiflora One, sans-serif",
           maxWidth: "80%",
           lineHeight: 1.8,
           zIndex: 10,

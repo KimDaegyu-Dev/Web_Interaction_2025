@@ -34,7 +34,7 @@ function drawGrids(
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
-  ctx.font = `${CELL_SIZE}px "Noto Sans KR"`;
+  ctx.font = `${CELL_SIZE}px "Grandiflora One"`;
   ctx.fillStyle = "white";
 
   const consonantPtr = world.get_consonant_grid_ptr();
