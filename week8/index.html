@@ -80,33 +80,7 @@
     </style>
   </head>
   <body>
-    <div id="controls">
-      <div class="control-group">
-        <button id="videoBtn">🎞 영상</button>
-        <button id="webcamBtn">📷 웹캠</button>
-      </div>
-      <div class="control-group">
-        <input type="text" id="hangul-input" placeholder="ex: 가" value="가" />
-        <button id="apply-hangul">적용</button>
-      </div>
-      <div class="control-group">
-        <input type="checkbox" id="video-bg-toggle" />
-        <label for="video-bg-toggle">배경 영상 보기</label>
-      </div>
-      <div class="control-group">
-        <label for="mode-select">모드:</label>
-        <select id="mode-select">
-          <option value="random">랜덤</option>
-          <option value="consonant">자음</option>
-          <option value="vowel">모음</option>
-        </select>
-      </div>
-    </div>
-
-    <video id="inputVideo" playsinline muted></video>
-    <canvas id="game-of-life-canvas"></canvas>
-
-
-    <script type="module" src="/src/main.ts"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
