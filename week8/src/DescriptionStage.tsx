@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { gsap } from "gsap";
+import { useGSAP } from "@gsap/react";
 import { World } from "../pkg/game_of_life";
 import { updateHangulSetOnWasm } from "./hangul";
 import { getVideoStream, startMediaSource } from "./camera";
@@ -23,34 +24,37 @@ const DescriptionStage: React.FC = () => {
   const lastTimeRef = useRef<number>(0);
   const animationFrameId = useRef<number | null>(null);
 
-  const [currentStage, setCurrentStage] = useState(0);
+  const [currentStage, setCurrentStage] = useState(-1);
   const [showVideo, setShowVideo] = useState(false);
   const [videoOpacity, setVideoOpacity] = useState(0);
-  const [currentText, setCurrentText] = useState<string[]>([]);
+  const [currentText, setCurrentText] = useState<string>(""); // 초기값 설정
   const [showSubtitle, setShowSubtitle] = useState(false);
   const [startTyping, setStartTyping] = useState(false);
 
+  const timelineRef = useRef<gsap.core.Timeline | null>(null);
+
   const stageTexts = [
-    [
-      "우리는 텍스트로 세상을 이해하려 한다.",
-      "수많은 기호의 얽힘 속에서, 우리는 하나의 의미를 찾는다.",
-    ],
-    [
-      "하지만 의미는 언제나 흩어진다.",
-      "같은 문장도, 읽는 순간마다 다른 흔적을 남긴다.",
-      "텍스트는 멈춰 있지 않다. 한 문장이 끝나는 자리에서, 이미 또 다른 의미가 태어난다.",
-    ],
-    [
-      "우연히 맞닿은 기호들이, 잠시 하나의 생명을 이룬다.",
-      "그 생명은 금세 사라지지만, 또 다른 조합으로 다시 태어난다.",
-      "텍스트는 멈추지 않는다. 단지 형태를 바꿀 뿐이다.",
-      "텍스트는 그렇게, 끝없이 자신을 다시 쓴다.",
-    ],
-    [
-      "무수한 조합 속에서, 당신은 어떤 의미를 읽어내고 있나요?",
-      "이제, 당신의 텍스트를 남겨보세요.",
-    ],
+    "우리는 텍스트로 세상을 이해하려 한다.\n수많은 기호의 얽힘 속에서, 우리는 하나의 의미를 찾는다.",
+    "하지만 의미는 언제나 흩어진다.\n같은 문장도, 읽는 순간마다 다른 흔적을 남긴다.\n텍스트는 멈춰 있지 않다. 한 문장이 끝나는 자리에서,\n이미 또 다른 의미가 태어난다.",
+    "우연히 맞닿은 기호들이, 잠시 하나의 생명을 이룬다.\n그 생명은 금세 사라지지만, 또 다른 조합으로 다시 태어난다.\n텍스트는 멈추지 않는다. 단지 형태를 바꿀 뿐이다.\n텍스트는 그렇게, 끝없이 자신을 다시 쓴다.",
+    "무수한 조합 속에서, 당신은 어떤 의미를 읽어내고 있나요?\n이제, 당신의 텍스트를 남겨보세요.",
   ];
+
+  // TextType duration 계산 함수
+  const calculateTextTypeDuration = useCallback(
+    (text: string, typingSpeed: number) => {
+      const totalChars = text.length;
+      // variableSpeed 평균값 사용 (min: 60, max: 120) => 평균 90
+      const avgSpeed = typingSpeed || 90;
+      const typingTime = totalChars * avgSpeed;
+      const totalDuration = typingTime / 1000; // ms to seconds
+      console.log(
+        `Duration 계산: ${totalChars}글자, ${totalDuration.toFixed(2)}초`
+      );
+      return totalDuration;
+    },
+    []
+  );
 
   const setupDOMAndWorld = useCallback(() => {
     const canvas = canvasRef.current;
@@ -68,138 +72,192 @@ const DescriptionStage: React.FC = () => {
     updateHangulSetOnWasm(worldRef.current, "설명");
   }, []);
 
-  const createTimeline = useCallback(() => {
-    const tl = gsap.timeline();
+  // useGSAP으로 타임라인 생성
+  useGSAP(
+    () => {
+      // DOM이 준비될 때까지 대기
+      const subtitleElement = document.querySelector(".subtitle");
+      if (!subtitleElement) {
+        console.error(".subtitle element not found in DOM");
+        return;
+      }
 
-    // Stage 1: 텍스트만 표시 (영상 없음)
-    tl.to({}, { duration: 0.5 }) // 초기 지연
-      .call(() => {
-        setCurrentStage(0);
-        setCurrentText(stageTexts[0]);
+      // 이미 타임라인이 실행 중이면 중단
+      if (timelineRef.current) {
+        timelineRef.current.kill();
+      }
+
+      console.log(".subtitle element found, creating timeline");
+      const tl = gsap.timeline();
+      timelineRef.current = tl;
+
+      // Stage 1: 텍스트만 표시 (영상 없음)
+      const stage1Duration = calculateTextTypeDuration(stageTexts[0], 10);
+
+      tl.to({}, { duration: 0.5 }) // 초기 지연
+        .call(() => {
+          console.log("Stage 1 시작");
+          setCurrentStage(0);
+          setCurrentText(stageTexts[0]);
+          setShowSubtitle(true);
+          setStartTyping(true);
+        })
+        .to(
+          ".subtitle",
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.8,
+            ease: "power2.out",
+          },
+          "-=0.1"
+        )
+        .call(() =>
+          console.log(`Stage 1 타이핑 시작, duration: ${stage1Duration + 1}초`)
+        )
+        .to({}, { duration: stage1Duration + 1 }) // 타이핑 완료 대기
+        .call(() => console.log("Stage 1 타이핑 완료, 페이드 아웃 시작"))
+        .to(".subtitle", {
+          opacity: 0,
+          y: -50,
+          duration: 0.8,
+          ease: "power2.in",
+        })
+        .call(() => {
+          console.log("Stage 1 종료");
+          setStartTyping(false);
+          setShowSubtitle(false);
+        })
+        .to({}, { duration: 1 }); // 페이드 아웃
+
+      // Stage 2: 영상 시작, dimmed 배경, 한글 설정 변경
+      const stage2Duration = calculateTextTypeDuration(stageTexts[1], 10);
+
+      tl.call(() => {
+        console.log("Stage 2 시작");
+        setCurrentStage(1);
+        setShowVideo(true);
+        setCurrentText(stageTexts[1]);
         setShowSubtitle(true);
         setStartTyping(true);
       })
-      .fromTo(
-        subtitleRef.current,
-        { opacity: 0, y: 50 },
-        { opacity: 1, y: 0, duration: 0.8, ease: "power2.out" }
-      )
-      .to({}, { duration: 10 }) // 타이핑 완료 대기
-      .to(subtitleRef.current, {
-        opacity: 0,
-        y: -50,
-        duration: 0.8,
-        ease: "power2.in",
-      })
-      .call(() => {
-        setStartTyping(false);
-        setShowSubtitle(false);
-      })
-      .to({}, { duration: 1 }); // 페이드 아웃
-
-    // Stage 2: 영상 시작, dimmed 배경, 한글 설정 변경
-    tl.call(() => {
-      setCurrentStage(1);
-      setShowVideo(true);
-      setCurrentText(stageTexts[1]);
-      setShowSubtitle(true);
-      setStartTyping(true);
-    })
-      .fromTo(
-        subtitleRef.current,
-        { opacity: 0, y: 50 },
-        { opacity: 1, y: 0, duration: 0.8, ease: "power2.out" }
-      )
-      .to(
-        {},
-        {
-          duration: 2,
-          onUpdate: function () {
-            const progress = this.progress();
-            setVideoOpacity(progress * 0.6);
+        .to(
+          ".subtitle",
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.8,
+            ease: "power2.out",
           },
-        }
-      )
-      .call(() => {
-        if (worldRef.current) {
-          updateHangulSetOnWasm(worldRef.current, "의미는 흩어진다");
-        }
-      })
-      .to({}, { duration: 15 }) // 타이핑 완료 대기
-      .to(subtitleRef.current, {
-        opacity: 0,
-        y: -50,
-        duration: 0.8,
-        ease: "power2.in",
-      })
-      .call(() => {
-        setStartTyping(false);
-        setShowSubtitle(false);
-      })
-      .to({}, { duration: 1 });
+          "-=0.1"
+        )
+        .to(
+          {},
+          {
+            duration: 2,
+            onUpdate: function () {
+              const progress = this.progress();
+              setVideoOpacity(progress * 0.6);
+            },
+          }
+        )
+        .call(() => {
+          if (worldRef.current) {
+            updateHangulSetOnWasm(worldRef.current, "의미는 흩어진다");
+          }
+        })
+        .to({}, { duration: stage2Duration + 1 }) // 타이핑 완료 대기
+        .to(".subtitle", {
+          opacity: 0,
+          y: -50,
+          duration: 0.8,
+          ease: "power2.in",
+        })
+        .call(() => {
+          setStartTyping(false);
+          setShowSubtitle(false);
+        })
+        .to({}, { duration: 1 });
 
-    // Stage 3: 한글 설정 변경, 영상 계속
-    tl.call(() => {
-      setCurrentStage(2);
-      setCurrentText(stageTexts[2]);
-      setShowSubtitle(true);
-      setStartTyping(true);
-    })
-      .fromTo(
-        subtitleRef.current,
-        { opacity: 0, y: 50 },
-        { opacity: 1, y: 0, duration: 0.8, ease: "power2.out" }
-      )
-      .call(() => {
-        if (worldRef.current) {
-          updateHangulSetOnWasm(worldRef.current, "생명 태어남");
-        }
-      })
-      .to({}, { duration: 20 }) // 타이핑 완료 대기
-      .to(subtitleRef.current, {
-        opacity: 0,
-        y: -50,
-        duration: 0.8,
-        ease: "power2.in",
-      })
-      .call(() => {
-        setStartTyping(false);
-        setShowSubtitle(false);
-      })
-      .to({}, { duration: 1 });
+      // Stage 3: 한글 설정 변경, 영상 계속
+      const stage3Duration = calculateTextTypeDuration(stageTexts[2], 10);
 
-    // Stage 4: 영상 종료, 빈 화면에서 텍스트만
-    tl.call(() => {
-      setCurrentStage(3);
-      setShowVideo(false);
-      setVideoOpacity(0);
-      setCurrentText(stageTexts[3]);
-      setShowSubtitle(true);
-      setStartTyping(true);
-    })
-      .fromTo(
-        subtitleRef.current,
-        { opacity: 0, y: 50 },
-        { opacity: 1, y: 0, duration: 0.8, ease: "power2.out" }
-      )
-      .to({}, { duration: 10 }) // 타이핑 완료 대기
-      .to(subtitleRef.current, {
-        opacity: 0,
-        y: -50,
-        duration: 0.8,
-        ease: "power2.in",
+      tl.call(() => {
+        setCurrentStage(2);
+        setCurrentText(stageTexts[2]);
+        setShowSubtitle(true);
+        setStartTyping(true);
       })
-      .call(() => {
-        setStartTyping(false);
-        setShowSubtitle(false);
-      })
-      .to({}, { duration: 2 })
-      .call(() => {
-        navigate("/main");
-      }); // 메인으로 이동
+        .to(
+          ".subtitle",
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.8,
+            ease: "power2.out",
+          },
+          "-=0.1"
+        )
+        .call(() => {
+          if (worldRef.current) {
+            updateHangulSetOnWasm(worldRef.current, "생명 태어남");
+          }
+        })
+        .to({}, { duration: stage3Duration + 1 }) // 타이핑 완료 대기
+        .to(".subtitle", {
+          opacity: 0,
+          y: -50,
+          duration: 0.8,
+          ease: "power2.in",
+        })
+        .call(() => {
+          setStartTyping(false);
+          setShowSubtitle(false);
+        })
+        .to({}, { duration: 1 });
 
-    return tl;
-  }, [stageTexts, navigate]);
+      // Stage 4: 영상 종료, 빈 화면에서 텍스트만
+      const stage4Duration = calculateTextTypeDuration(stageTexts[3], 10);
+
+      tl.call(() => {
+        setCurrentStage(3);
+        setShowVideo(false);
+        setVideoOpacity(0);
+        setCurrentText(stageTexts[3]);
+        setShowSubtitle(true);
+        setStartTyping(true);
+      })
+        .to(
+          ".subtitle",
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.8,
+            ease: "power2.out",
+          },
+          "-=0.1"
+        )
+        .to({}, { duration: stage4Duration + 1 }) // 타이핑 완료 대기
+        .to(".subtitle", {
+          opacity: 0,
+          y: -50,
+          duration: 0.8,
+          ease: "power2.in",
+        })
+        .call(() => {
+          setStartTyping(false);
+          setShowSubtitle(false);
+        })
+        .to({}, { duration: 2 })
+        .call(() => {
+          navigate("/main");
+        }); // 메인으로 이동
+
+      // 타임라인 자동 시작
+      tl.play();
+    },
+    { dependencies: [] }
+  );
 
   useEffect(() => {
     setupDOMAndWorld();
@@ -213,16 +271,11 @@ const DescriptionStage: React.FC = () => {
       }
     );
 
-    // 타임라인 시작
-    const timeline = createTimeline();
-    timeline.play();
-
     return () => {
       window.removeEventListener("resize", setupDOMAndWorld);
       selfieSegmentationRef.current?.close();
-      timeline.kill();
     };
-  }, [setupDOMAndWorld, createTimeline]);
+  }, [setupDOMAndWorld]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -267,24 +320,24 @@ const DescriptionStage: React.FC = () => {
     };
   }, [showVideo]);
 
-  const handleStartVideo = async () => {
-    if (videoRef.current && showVideo) {
-      try {
-        await startMediaSource(
-          videoRef.current,
-          getVideoStream(videoRef.current)
-        );
-      } catch (error) {
-        console.error("Failed to start video:", error);
-      }
-    }
-  };
-
   // showVideo가 true가 될 때 영상 시작
   useEffect(() => {
-    if (showVideo) {
-      handleStartVideo();
-    }
+    const startVideo = async () => {
+      if (showVideo && videoRef.current) {
+        console.log("Starting video playback...");
+        try {
+          await startMediaSource(
+            videoRef.current,
+            getVideoStream(videoRef.current)
+          );
+          console.log("Video playback started successfully");
+        } catch (error) {
+          console.error("Failed to start video:", error);
+        }
+      }
+    };
+
+    startVideo();
   }, [showVideo]);
 
   return (
@@ -303,6 +356,7 @@ const DescriptionStage: React.FC = () => {
           objectFit: "cover",
           opacity: videoOpacity,
           transition: "opacity 0.5s ease",
+          display: showVideo ? "block" : "none",
         }}
       />
       <canvas
@@ -317,45 +371,48 @@ const DescriptionStage: React.FC = () => {
         }}
       />
 
-      {showSubtitle && (
-        <div
-          ref={subtitleRef}
-          style={{
-            position: "absolute",
-            bottom: "10%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            textAlign: "center",
-            color: "white",
-            fontSize: "24px",
-            fontFamily: "Noto Sans KR, sans-serif",
-            maxWidth: "80%",
-            lineHeight: 1.6,
-            textShadow: "2px 2px 4px rgba(0,0,0,0.8)",
-            zIndex: 10,
-          }}
-        >
+      <div
+        ref={subtitleRef}
+        className="subtitle"
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "30%",
+          textAlign: "left",
+          color: "white",
+          fontSize: "28px",
+          fontFamily: "Noto Sans KR, sans-serif",
+          maxWidth: "80%",
+          lineHeight: 1.8,
+          textShadow: "2px 2px 4px rgba(0,0,0,0.8)",
+          zIndex: 10,
+          opacity: 0,
+          visibility: "visible",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {currentStage >= 0 && currentText !== "" && (
           <TextType
-            key={`${currentStage}-${showSubtitle}`}
+            key={`stage-${currentStage}`}
             text={currentText}
-            typingSpeed={80}
-            pauseDuration={2000}
-            deletingSpeed={50}
+            typingSpeed={30}
+            pauseDuration={0}
+            deletingSpeed={5}
             loop={false}
-            showCursor={true}
+            showCursor={false}
             hideCursorWhileTyping={true}
-            cursorCharacter="|"
-            cursorBlinkDuration={0.8}
             textColors={["#ffffff"]}
-            initialDelay={startTyping ? 0 : 1000}
+            initialDelay={0}
             startOnVisible={false}
-            variableSpeed={{ min: 60, max: 120 }}
-            onSentenceComplete={(sentence, index) => {
-              console.log(`Sentence ${index} completed: ${sentence}`);
-            }}
+            variableSpeed={{ min: 8, max: 12 }}
+            as="div"
+            style={{ whiteSpace: "pre-line" }}
           />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
