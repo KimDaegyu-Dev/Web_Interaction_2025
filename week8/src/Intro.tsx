@@ -7,7 +7,7 @@ const Intro: React.FC = () => {
   const navigate = useNavigate();
 
   const handleStart = () => {
-    navigate("/main");
+    navigate("/description");
   };
 
   return (
