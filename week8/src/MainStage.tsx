@@ -11,13 +11,12 @@ const MainStage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hangulInput, setHangulInput] = useState<string>("가");
-  const [currentMode, setCurrentMode] = useState<string>("random");
   const [showVideoBackground, setShowVideoBackground] =
     useState<boolean>(false);
 
   const worldRef = useRef<World | null>(null);
   const selfieSegmentationRef = useRef<SelfieSegmentation | null>(null);
-  const segmentationMaskRef = useRef<ImageBitmap | undefined>();
+  const segmentationMaskRef = useRef<ImageBitmap | undefined>(undefined);
   const isProcessingRef = useRef<boolean>(false);
   const lastTimeRef = useRef<number>(0);
   const animationFrameId = useRef<number | null>(null);
@@ -44,7 +43,9 @@ const MainStage: React.FC = () => {
 
     selfieSegmentationRef.current = initializeSelfieSegmentation(
       (results: Results) => {
-        segmentationMaskRef.current = results.segmentationMask;
+        if (results.segmentationMask) {
+          segmentationMaskRef.current = results.segmentationMask as ImageBitmap;
+        }
       }
     );
 
@@ -74,7 +75,7 @@ const MainStage: React.FC = () => {
           updateAndDrawWorld(
             worldRef.current,
             segmentationMaskRef.current,
-            currentMode,
+            "random",
             ctx,
             video,
             showVideoBackground
@@ -95,7 +96,7 @@ const MainStage: React.FC = () => {
       }
       isProcessingRef.current = false;
     };
-  }, [currentMode, showVideoBackground]);
+  }, [showVideoBackground]);
 
   useEffect(() => {
     if (worldRef.current) {
@@ -103,28 +104,24 @@ const MainStage: React.FC = () => {
     }
   }, [hangulInput]);
 
-  const handleStartWebcam = async () => {
+  const handleStartWebcam = useCallback(async () => {
     if (videoRef.current) {
       await startMediaSource(videoRef.current, getWebcamStream());
     }
+  }, []);
+
+  const handleToggleVideoBackground = () => {
+    setShowVideoBackground((prev) => !prev);
   };
 
-  const handleStartVideo = async () => {
-    if (videoRef.current) {
-      await startMediaSource(
-        videoRef.current,
-        getVideoStream(videoRef.current)
-      );
-    }
-  };
+  // 컴포넌트 마운트 시 웹캠 자동 시작
+  useEffect(() => {
+    handleStartWebcam();
+  }, [handleStartWebcam]);
 
   return (
-    <div>
+    <div onClick={handleToggleVideoBackground}>
       <div id="controls">
-        <div className="control-group">
-          <button onClick={handleStartVideo}>🎞 영상</button>
-          <button onClick={handleStartWebcam}>📷 웹캠</button>
-        </div>
         <div className="control-group">
           <input
             type="text"
@@ -132,27 +129,6 @@ const MainStage: React.FC = () => {
             onChange={(e) => setHangulInput(e.target.value)}
             placeholder="ex: 가"
           />
-        </div>
-        <div className="control-group">
-          <input
-            type="checkbox"
-            id="video-bg-toggle"
-            checked={showVideoBackground}
-            onChange={(e) => setShowVideoBackground(e.target.checked)}
-          />
-          <label htmlFor="video-bg-toggle">배경 영상 보기</label>
-        </div>
-        <div className="control-group">
-          <label htmlFor="mode-select">모드:</label>
-          <select
-            id="mode-select"
-            value={currentMode}
-            onChange={(e) => setCurrentMode(e.target.value)}
-          >
-            <option value="random">랜덤</option>
-            <option value="consonant">자음</option>
-            <option value="vowel">모음</option>
-          </select>
         </div>
       </div>
 
