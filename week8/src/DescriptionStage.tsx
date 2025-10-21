@@ -33,7 +33,7 @@ const DescriptionStage: React.FC = () => {
   const [startTyping, setStartTyping] = useState(false);
 
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
-
+  const TYPING_SPEED = 90;
   const stageTexts = [
     "우리는 텍스트로 세상을 이해하려 한다.\n수많은 기호의 얽힘 속에서, 우리는 하나의 의미를 찾는다.",
     "하지만 의미는 언제나 흩어진다.\n같은 문장도, 읽는 순간마다 다른 흔적을 남긴다.\n텍스트는 멈춰 있지 않다. 한 문장이 끝나는 자리에서,\n이미 또 다른 의미가 태어난다.",
@@ -93,7 +93,10 @@ const DescriptionStage: React.FC = () => {
       timelineRef.current = tl;
 
       // Stage 1: 텍스트만 표시 (영상 없음)
-      const stage1Duration = calculateTextTypeDuration(stageTexts[0], 10);
+      const stage1Duration = calculateTextTypeDuration(
+        stageTexts[0],
+        TYPING_SPEED
+      );
 
       tl.to({}, { duration: 0.5 }) // 초기 지연
         .call(() => {
@@ -117,7 +120,11 @@ const DescriptionStage: React.FC = () => {
           console.log(`Stage 1 타이핑 시작, duration: ${stage1Duration + 1}초`)
         )
         .to({}, { duration: stage1Duration + 1 }) // 타이핑 완료 대기
-        .call(() => console.log("Stage 1 타이핑 완료, 페이드 아웃 시작"))
+        .call(() => {
+          console.log("Stage 1 타이핑 완료, 페이드 아웃 시작");
+          setShowVideo(true);
+          setCanvasOpacity(0);
+        })
         .to(".subtitle", {
           opacity: 0,
           y: -50,
@@ -132,13 +139,14 @@ const DescriptionStage: React.FC = () => {
         .to({}, { duration: 1 }); // 페이드 아웃
 
       // Stage 2: 영상 시작, dimmed 배경, 한글 설정 변경
-      const stage2Duration = calculateTextTypeDuration(stageTexts[1], 10);
+      const stage2Duration = calculateTextTypeDuration(
+        stageTexts[1],
+        TYPING_SPEED
+      );
 
       tl.call(() => {
         console.log("Stage 2 시작");
         setCurrentStage(1);
-        setShowVideo(true);
-        setCanvasOpacity(0);
         setCurrentText(stageTexts[1]);
         setShowSubtitle(true);
         setStartTyping(true);
@@ -182,7 +190,10 @@ const DescriptionStage: React.FC = () => {
         .to({}, { duration: 1 });
 
       // Stage 3: 한글 설정 변경, 영상 계속
-      const stage3Duration = calculateTextTypeDuration(stageTexts[2], 10);
+      const stage3Duration = calculateTextTypeDuration(
+        stageTexts[2],
+        TYPING_SPEED
+      );
 
       tl.call(() => {
         setCurrentStage(2);
@@ -219,7 +230,10 @@ const DescriptionStage: React.FC = () => {
         .to({}, { duration: 1 });
 
       // Stage 4: 영상 종료, 빈 화면에서 텍스트만
-      const stage4Duration = calculateTextTypeDuration(stageTexts[3], 10);
+      const stage4Duration = calculateTextTypeDuration(
+        stageTexts[3],
+        TYPING_SPEED
+      );
 
       tl.call(() => {
         setCurrentStage(3);
@@ -367,9 +381,9 @@ const DescriptionStage: React.FC = () => {
     >
       {/* {(currentStage === 0 || currentStage === 3) && ( */}
       <MetaBalls
-        color="#ffffff"
-        cursorBallColor="#ffffff"
-        cursorBallSize={1}
+        color={"#111111"}
+        cursorBallColor={"#aaaaaa"}
+        cursorBallSize={0.5}
         ballCount={20}
         animationSize={20}
         enableMouseInteraction={true}
@@ -426,10 +440,9 @@ const DescriptionStage: React.FC = () => {
       >
         {currentStage >= 0 && currentText !== "" && (
           <TextType
-            className="-translate-x-[50%] -translate-y-[50%]"
+            className="-translate-x-[50%] -translate-y-[50%] pointer-events-none"
             key={`stage-${currentStage}`}
             text={currentText}
-            typingSpeed={60}
             pauseDuration={0}
             deletingSpeed={30}
             loop={false}
@@ -438,7 +451,7 @@ const DescriptionStage: React.FC = () => {
             textColors={["#ffffff"]}
             initialDelay={0}
             startOnVisible={false}
-            variableSpeed={{ min: 8, max: 12 }}
+            variableSpeed={{ min: TYPING_SPEED - 10, max: TYPING_SPEED + 10 }}
             as="div"
             style={{ whiteSpace: "pre-line" }}
           />

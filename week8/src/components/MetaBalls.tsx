@@ -316,7 +316,7 @@ const MetaBalls: React.FC<MetaBallsProps> = ({
     enableTransparency,
   ]);
 
-  return <div ref={containerRef} className="w-full h-full relative" />;
+  return <div ref={containerRef} className="w-full h-full relative z-2" />;
 };
 
 export default MetaBalls;
