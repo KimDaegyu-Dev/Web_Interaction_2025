@@ -28,6 +28,10 @@ function drawGrids(
     ctx.restore();
     ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else {
+    // 배경 영상이 꺼져있을 때도 검은 배경을 그려서 스크린샷이 제대로 찍히도록 함
+    ctx.fillStyle = "rgba(0, 0, 0, 1)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
   ctx.font = `${CELL_SIZE}px "Noto Sans KR"`;
@@ -56,7 +60,7 @@ function drawGrids(
     const row = Math.floor(i / worldWidth);
     const col = i % worldWidth;
     const x = col * (CELL_SIZE + 1) + 2;
-    const y = row * (CELL_SIZE + 1);
+    const y = row * (CELL_SIZE + 1) + CELL_SIZE; // CELL_SIZE만큼 아래로 이동
 
     if (syllableCells[i] > 0) {
       ctx.fillText(String.fromCharCode(syllableCells[i]), x, y);
@@ -118,9 +122,7 @@ function updateAndDrawWorld(
     const row = Math.floor(i / worldWidth);
     const col = i % worldWidth;
     const isCellAlive =
-      consonantCells[i] !== 0 ||
-      vowelCells[i] !== 0 ||
-      syllableCells[i] !== 0;
+      consonantCells[i] !== 0 || vowelCells[i] !== 0 || syllableCells[i] !== 0;
 
     if (silhouetteGrid[i] === 1 && !isCellAlive) {
       world.alive_cell(row, col, currentMode);
