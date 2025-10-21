@@ -26,7 +26,7 @@ const DescriptionStage: React.FC = () => {
 
   const [currentStage, setCurrentStage] = useState(-1);
   const [showVideo, setShowVideo] = useState(false);
-  const [videoOpacity, setVideoOpacity] = useState(0);
+  const [canvasOpacity, setCanvasOpacity] = useState(1);
   const [currentText, setCurrentText] = useState<string>(""); // 초기값 설정
   const [showSubtitle, setShowSubtitle] = useState(false);
   const [startTyping, setStartTyping] = useState(false);
@@ -157,7 +157,7 @@ const DescriptionStage: React.FC = () => {
             duration: 2,
             onUpdate: function () {
               const progress = this.progress();
-              setVideoOpacity(progress * 0.6);
+              setCanvasOpacity(1 - progress * 0.4); // opacity 1 -> 0.6
             },
           }
         )
@@ -222,7 +222,7 @@ const DescriptionStage: React.FC = () => {
       tl.call(() => {
         setCurrentStage(3);
         setShowVideo(false);
-        setVideoOpacity(0);
+        setCanvasOpacity(1);
         setCurrentText(stageTexts[3]);
         setShowSubtitle(true);
         setStartTyping(true);
@@ -294,22 +294,36 @@ const DescriptionStage: React.FC = () => {
           await selfieSegmentationRef.current?.send({ image: video });
         }
         if (worldRef.current && segmentationMaskRef.current) {
+          console.log("Drawing world with segmentation mask");
           updateAndDrawWorld(
             worldRef.current,
             segmentationMaskRef.current,
             "random", // 고정 모드
             ctx,
             video,
-            true // 배경 영상 보기 활성화
+            true // canvas에 비디오 배경과 한글 모두 그리기
           );
         }
       }
       animationFrameId.current = requestAnimationFrame(processFrame);
     };
 
-    if (!isProcessingRef.current && showVideo) {
+    if (showVideo) {
+      console.log("Starting frame processing, showVideo:", showVideo);
+      if (isProcessingRef.current) {
+        console.log("Processing already running, canceling old frame");
+        if (animationFrameId.current) {
+          cancelAnimationFrame(animationFrameId.current);
+        }
+      }
       isProcessingRef.current = true;
       animationFrameId.current = requestAnimationFrame(processFrame);
+    } else {
+      console.log("Stopping frame processing, showVideo:", showVideo);
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
+      isProcessingRef.current = false;
     }
 
     return () => {
@@ -341,23 +355,20 @@ const DescriptionStage: React.FC = () => {
   }, [showVideo]);
 
   return (
-    <div style={{ position: "relative", width: "100vw", height: "100vh" }}>
+    <div
+      style={{
+        position: "relative",
+        width: "100vw",
+        height: "100vh",
+        backgroundColor: "black",
+      }}
+    >
       <video
         ref={videoRef}
         id="inputVideo"
         playsInline
         muted
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          opacity: videoOpacity,
-          transition: "opacity 0.5s ease",
-          display: showVideo ? "block" : "none",
-        }}
+        style={{ display: "none" }}
       />
       <canvas
         ref={canvasRef}
@@ -368,6 +379,10 @@ const DescriptionStage: React.FC = () => {
           left: 0,
           width: "100%",
           height: "100%",
+          opacity: canvasOpacity,
+          zIndex: 1,
+          transition: "opacity 0.5s ease",
+          display: showVideo ? "block" : "none",
         }}
       />
 
@@ -384,7 +399,6 @@ const DescriptionStage: React.FC = () => {
           fontFamily: "Noto Sans KR, sans-serif",
           maxWidth: "80%",
           lineHeight: 1.8,
-          textShadow: "2px 2px 4px rgba(0,0,0,0.8)",
           zIndex: 10,
           opacity: 0,
           visibility: "visible",
