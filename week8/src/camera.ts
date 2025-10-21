@@ -15,9 +15,19 @@ async function startMediaSource(
   mediaPromise: Promise<MediaStream | string>
 ) {
   try {
+    // Stop any existing tracks to prevent AbortError
+    if (video.srcObject instanceof MediaStream) {
+      video.srcObject.getTracks().forEach((track) => track.stop());
+    }
+    video.srcObject = null; // Clear previous source
+    video.src = ""; // Clear previous src for video files
+    video.load(); // Reload the video element
+
     const media = await mediaPromise;
     if (typeof media !== "string") {
       video.srcObject = media;
+    } else {
+      video.src = media;
     }
     await video.play();
   } catch (error) {
