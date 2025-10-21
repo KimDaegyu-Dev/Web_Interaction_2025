@@ -10,6 +10,7 @@ import { CELL_SIZE, frameDuration } from "./constants";
 import { updateAndDrawWorld } from "./drawing";
 import { initializeSelfieSegmentation } from "./segmentation";
 import TextType from "./components/TextType";
+import MetaBalls from "./components/MetaBalls";
 
 const DescriptionStage: React.FC = () => {
   const navigate = useNavigate();
@@ -363,6 +364,20 @@ const DescriptionStage: React.FC = () => {
         backgroundColor: "black",
       }}
     >
+      {/* {(currentStage === 0 || currentStage === 3) && ( */}
+      <MetaBalls
+        color="#ffffff"
+        cursorBallColor="#ffffff"
+        cursorBallSize={1}
+        ballCount={20}
+        animationSize={20}
+        enableMouseInteraction={true}
+        enableTransparency={true}
+        hoverSmoothness={0.05}
+        clumpFactor={2}
+        speed={0.1}
+      />
+      {/* )} */}
       <video
         ref={videoRef}
         id="inputVideo"
@@ -392,8 +407,8 @@ const DescriptionStage: React.FC = () => {
         style={{
           position: "absolute",
           top: "50%",
-          left: "30%",
-          textAlign: "left",
+          left: "50%",
+          textAlign: "center",
           color: "white",
           fontSize: "28px",
           fontFamily: "Noto Sans KR, sans-serif",
@@ -410,11 +425,12 @@ const DescriptionStage: React.FC = () => {
       >
         {currentStage >= 0 && currentText !== "" && (
           <TextType
+            className="-translate-x-[50%] -translate-y-[50%]"
             key={`stage-${currentStage}`}
             text={currentText}
-            typingSpeed={30}
+            typingSpeed={60}
             pauseDuration={0}
-            deletingSpeed={5}
+            deletingSpeed={30}
             loop={false}
             showCursor={false}
             hideCursorWhileTyping={true}
