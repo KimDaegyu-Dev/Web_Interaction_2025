@@ -426,7 +426,7 @@ const DescriptionStage: React.FC = () => {
           textAlign: "center",
           color: "white",
           fontSize: "28px",
-          fontFamily: "Grandiflora One, sans-serif",
+          fontFamily: "FunflowSurvivor, sans-serif",
           maxWidth: "80%",
           lineHeight: 1.8,
           zIndex: 10,

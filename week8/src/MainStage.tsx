@@ -154,9 +154,9 @@ const MainStage: React.FC = () => {
   }, [handleStartWebcam]);
 
   return (
-    <div onClick={handleToggleVideoBackground}>
-      <div id="controls">
-        <div className="control-group">
+    <>
+      <div id="controls" className="font-[FunflowSurvivor]">
+        <div className="control-group ">
           <input
             type="text"
             value={tempHangulInput}
@@ -164,14 +164,16 @@ const MainStage: React.FC = () => {
             placeholder="ex: 읏 추워"
           />
         </div>
-        <div className="control-group">
+        <div className="w-full my-12 rounded-lg overflow-hidden">
           <ScreenshotButton canvasRef={canvasRef} isProcessing={isProcessing} />
         </div>
       </div>
 
-      <video ref={videoRef} id="inputVideo" playsInline muted></video>
-      <canvas ref={canvasRef} id="game-of-life-canvas"></canvas>
-    </div>
+      <div onClick={handleToggleVideoBackground}>
+        <video ref={videoRef} id="inputVideo" playsInline muted></video>
+        <canvas ref={canvasRef} id="game-of-life-canvas"></canvas>
+      </div>
+    </>
   );
 };
 

@@ -14,10 +14,13 @@ const Intro: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center bg-black text-white overflow-hidden w-screen h-screen fixed inset-0">
       <div className="z-3 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <h1 className="text-5xl font-bold -translate-y-10 text-center">
+        <h1 className="text-5xl font-bold -translate-y-10 text-center font-[FunflowSurvivor]">
           Welcome to Deconstructivism
         </h1>
-        <div className="mt-1 text-nowrap text-center">
+        <h3 className="text-center font-[Noto Sans KR] text-mg text-gray-400/40">
+          밑의 설명에 마우스를 가져다대보세요
+        </h3>
+        <div className="mt-1 text-nowrap text-center font-[FunflowSurvivor] text-xl">
           <DecryptedText
             text={`우리는 의미를 찾기 위해 끝없이 글자 조합을 시도한다`}
             animateOn="hover"
@@ -39,10 +42,10 @@ const Intro: React.FC = () => {
           />
         </div>
 
-        <div className="flex justify-center mt-10 translate-y-10">
+        <div className="flex justify-center mt-10 translate-y-10 px-12 py-12 bg-amber-700 hover:bg-amber-800 rounded-lg ">
           <button
             onClick={handleStart}
-            className="px-12 py-8 bg-blue-600 hover:bg-blue-700 rounded-lg text-xl font-semibold transition duration-300"
+            className=" text-xl font-semibold transition duration-300"
           >
             Start
           </button>

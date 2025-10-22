@@ -62,3 +62,18 @@ body {
 .control-group button:hover {
   background-color: #0056b3;
 }
+@font-face {
+  font-family: "CoolGuy";
+  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/2403@1.0/CoolGuy-Medium.woff2")
+    format("woff2");
+  font-weight: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "FunflowSurvivor";
+  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2210-2@1.0/FUNFLOWSURVIVORKR.woff2")
+    format("woff2");
+  font-weight: normal;
+  font-display: swap;
+}

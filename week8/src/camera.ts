@@ -22,6 +22,7 @@ async function startMediaSource(
     video.srcObject = null; // Clear previous source
     video.src = ""; // Clear previous src for video files
     video.load(); // Reload the video element
+    video.loop = true;
 
     const media = await mediaPromise;
     if (typeof media !== "string") {

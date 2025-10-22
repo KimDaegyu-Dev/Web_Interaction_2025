@@ -61,10 +61,10 @@ const ScreenshotButton: React.FC<ScreenshotButtonProps> = ({
     <>
       <button
         onClick={handleScreenshot}
-        className="screenshot-button"
+        className="w-full bg-amber-700"
         disabled={!isProcessing}
       >
-        📸 스크린샷
+        의미 찾아보기
       </button>
       <a
         ref={downloadLinkRef}
