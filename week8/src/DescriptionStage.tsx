@@ -380,7 +380,7 @@ const DescriptionStage: React.FC = () => {
       }}
     >
       {/* {(currentStage === 0 || currentStage === 3) && ( */}
-      <MetaBalls
+      {/* <MetaBalls
         color={"#111111"}
         cursorBallColor={"#aaaaaa"}
         cursorBallSize={0.5}
@@ -391,7 +391,7 @@ const DescriptionStage: React.FC = () => {
         hoverSmoothness={0.05}
         clumpFactor={2}
         speed={0.1}
-      />
+      /> */}
       {/* )} */}
       <video
         ref={videoRef}

@@ -12,30 +12,8 @@ const Intro: React.FC = () => {
   };
 
   return (
-    <FadeContent
-      blur={true}
-      duration={1000}
-      easing="ease-out"
-      initialOpacity={100}
-    >
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
-        {/* <CurvedLoop
-          marqueeText="의미는 결코 도달되지 않고, 끊임없이 미끄러진다"
-          speed={1}
-          curveAmount={-300}
-          interactive={false}
-        /> */}
-        <DecryptedCurvedLoop
-          marqueeText="의미는 Différance 결코 Différance 도달되지 않고, 끊임없이 미끄러진다 * Différance"
-          animateOn="both"
-          speed={-0.5}
-          curveAmount={-300}
-          sequential
-          revealDirection="start"
-          useOriginalCharsOnly
-          decryptSpeed={60}
-          maxIterations={15}
-        />
+    <div className="flex flex-col items-center justify-center bg-black text-white overflow-hidden w-screen h-screen fixed inset-0">
+      <div className="z-3 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
         <h1 className="text-5xl font-bold mb-8">
           Welcome to Hangul Segmentation
         </h1>
@@ -68,7 +46,27 @@ const Intro: React.FC = () => {
           Start
         </button>
       </div>
-    </FadeContent>
+      {Array.from({ length: 13 }).map((_, index) => (
+        <div
+          className={`w-full h-full absolute`}
+          style={{
+            transform: `translateY(${-8 * index}rem)`,
+            top: `50rem`,
+          }}
+        >
+          <DecryptedCurvedLoop
+            marqueeText="의미는 결코 Différance 도달되지 않고, 끊임없이 Différance 미끄러진다"
+            animateOn="always"
+            speed={index % 5 === 0 ? 0.1 : -0.05}
+            curveAmount={-100}
+            revealDirection={index % 3 === 0 ? "start" : "end"}
+            sequential
+            useOriginalCharsOnly
+            decryptSpeed={200 * (Math.floor(index / 5) + 1)}
+          />
+        </div>
+      ))}
+    </div>
   );
 };
 

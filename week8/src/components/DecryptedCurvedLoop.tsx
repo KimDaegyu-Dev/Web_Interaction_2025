@@ -1,4 +1,4 @@
-import {
+import React, {
   useRef,
   useEffect,
   useState,
@@ -75,18 +75,14 @@ const DecryptedCurvedLoop: FC<DecryptedCurvedLoopProps> = ({
   const [hasAnimated, setHasAnimated] = useState<boolean>(false);
 
   const textLength = spacing;
-  const totalText = textLength
-    ? Array(Math.ceil(1800 / textLength) + 2)
-        .fill(displayText)
-        .join("")
-    : displayText;
+  const repetitions = textLength ? Math.ceil(1800 / textLength) + 2 : 1;
   const ready = spacing > 0;
 
-  // Measure text spacing
+  // Measure text spacing - only based on original text, not displayText
   useEffect(() => {
     if (measureRef.current)
       setSpacing(measureRef.current.getComputedTextLength());
-  }, [displayText, className]);
+  }, [text, className]);
 
   // Initialize offset
   useEffect(() => {
@@ -123,7 +119,7 @@ const DecryptedCurvedLoop: FC<DecryptedCurvedLoopProps> = ({
 
   // Decrypt animation logic
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: number;
     let currentIteration = 0;
 
     const getNextIndex = (revealedSet: Set<number>): number => {
@@ -362,7 +358,7 @@ const DecryptedCurvedLoop: FC<DecryptedCurvedLoopProps> = ({
       {...hoverProps}
     >
       <svg
-        className="select-none w-full overflow-visible block aspect-[100/12] text-[6rem] font-bold uppercase leading-none"
+        className="select-none w-full overflow-visible block aspect-[100/12] text-[3rem] font-bold uppercase leading-none font-[Grandiflora_One]"
         viewBox="0 0 1440 120"
       >
         <text
@@ -370,7 +366,7 @@ const DecryptedCurvedLoop: FC<DecryptedCurvedLoopProps> = ({
           xmlSpace="preserve"
           style={{ visibility: "hidden", opacity: 0, pointerEvents: "none" }}
         >
-          {displayText}
+          {text}
         </text>
         <defs>
           <path
@@ -389,23 +385,29 @@ const DecryptedCurvedLoop: FC<DecryptedCurvedLoopProps> = ({
               startOffset={offset + "px"}
               xmlSpace="preserve"
             >
-              {totalText.split("").map((char, index) => {
-                const isRevealedOrDone =
-                  revealedIndices.has(index % text.length) ||
-                  !isScrambling ||
-                  (!isHovering && animateOn !== "always");
+              {Array(repetitions)
+                .fill(null)
+                .map((_, repIndex) =>
+                  displayText.split("").map((char, charIndex) => {
+                    const isRevealedOrDone =
+                      revealedIndices.has(charIndex) ||
+                      !isScrambling ||
+                      (!isHovering && animateOn !== "always");
 
-                return (
-                  <tspan
-                    key={index}
-                    className={
-                      isRevealedOrDone ? "" : encryptedClassName || "opacity-50"
-                    }
-                  >
-                    {char}
-                  </tspan>
-                );
-              })}
+                    return (
+                      <tspan
+                        key={`${repIndex}-${charIndex}`}
+                        className={
+                          isRevealedOrDone
+                            ? "fill-[#441212] opacity-50"
+                            : encryptedClassName || "fill-[#441212] opacity-50"
+                        }
+                      >
+                        {char}
+                      </tspan>
+                    );
+                  })
+                )}
             </textPath>
           </text>
         )}
