@@ -399,8 +399,8 @@ const DecryptedCurvedLoop: FC<DecryptedCurvedLoopProps> = ({
                         key={`${repIndex}-${charIndex}`}
                         className={
                           isRevealedOrDone
-                            ? "fill-[#441212] opacity-50"
-                            : encryptedClassName || "fill-[#441212] opacity-50"
+                            ? "fill-[#492121] opacity-70"
+                            : encryptedClassName || "fill-[#492121] opacity-70"
                         }
                       >
                         {char}
