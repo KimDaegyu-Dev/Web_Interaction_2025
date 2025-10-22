@@ -6,7 +6,7 @@ import MainStage from "./MainStage";
 
 const App: React.FC = () => {
   return (
-    <Router>
+    <Router basename="/Web_Interaction_2025/week8">
       <Routes>
         <Route path="/" element={<Intro />} />
         <Route path="/description" element={<DescriptionStage />} />
