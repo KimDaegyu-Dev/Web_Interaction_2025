@@ -19477,13 +19477,13 @@ Please change the parent <Route path="${g}"> to <Route path="${g === "/" ? "*" :
     }, K("SelfieSegmentation", Wy), K("VERSION", "0.1.1675465747");
   }).call(vf);
   function y2(t) {
-    const e = new u5.SelfieSegmentation({
-      locateFile: (n) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${n}`
+    const e = window.SelfieSegmentation || u5.SelfieSegmentation, n = new e({
+      locateFile: (i) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${i}`
     });
-    return e.setOptions({
+    return n.setOptions({
       modelSelection: 1,
       selfieMode: true
-    }), e.onResults(t), e;
+    }), n.onResults(t), n;
   }
   const c5 = ({ text: t, as: e = "div", typingSpeed: n = 50, initialDelay: i = 0, pauseDuration: a = 2e3, deletingSpeed: r = 30, loop: s = true, className: l = "", showCursor: o = true, hideCursorWhileTyping: c = false, cursorCharacter: f = "|", cursorClassName: d = "", cursorBlinkDuration: m = 0.5, textColors: y = [], variableSpeed: T, onSentenceComplete: b, startOnVisible: x = false, reverseMode: v = false, ...g }) => {
     const [S, A] = D.useState(""), [w, V] = D.useState(0), [z, O] = D.useState(false), [U, B] = D.useState(0), [Y, F] = D.useState(!x), k = D.useRef(null), $ = D.useRef(null), K = D.useMemo(() => Array.isArray(t) ? t : [
@@ -19645,7 +19645,7 @@ Please change the parent <Route path="${g}"> to <Route path="${g === "/" ? "*" :
           b(P * 0.6);
         }
       }).call(() => {
-        a.current && Cl(a.current, "\uC758\uBBF8\uB294 \uD769\uC5B4\uC9C4\uB2E4");
+        a.current && Cl(a.current, "\uD558\uB8E8\uB05D");
       }).to({}, {
         duration: $ + 1
       }).to(".subtitle", {
@@ -19667,7 +19667,7 @@ Please change the parent <Route path="${g}"> to <Route path="${g === "/" ? "*" :
         duration: 0.8,
         ease: "power2.out"
       }, "-=0.1").call(() => {
-        a.current && Cl(a.current, "\uC0DD\uBA85 \uD0DC\uC5B4\uB0A8");
+        a.current && Cl(a.current, "\uAC77\uB2E4");
       }).to({}, {
         duration: K + 1
       }).to(".subtitle", {

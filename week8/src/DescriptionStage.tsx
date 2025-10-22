@@ -173,7 +173,7 @@ const DescriptionStage: React.FC = () => {
         )
         .call(() => {
           if (worldRef.current) {
-            updateHangulSetOnWasm(worldRef.current, "의미는 흩어진다");
+            updateHangulSetOnWasm(worldRef.current, "하루끝");
           }
         })
         .to({}, { duration: stage2Duration + 1 }) // 타이핑 완료 대기
@@ -213,7 +213,7 @@ const DescriptionStage: React.FC = () => {
         )
         .call(() => {
           if (worldRef.current) {
-            updateHangulSetOnWasm(worldRef.current, "생명 태어남");
+            updateHangulSetOnWasm(worldRef.current, "걷다");
           }
         })
         .to({}, { duration: stage3Duration + 1 }) // 타이핑 완료 대기
