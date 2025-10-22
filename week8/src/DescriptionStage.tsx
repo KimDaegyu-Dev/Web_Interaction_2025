@@ -438,7 +438,7 @@ const DescriptionStage: React.FC = () => {
           justifyContent: "center",
         }}
       >
-        {currentStage >= 0 && currentText !== "" && (
+        {showSubtitle && currentStage >= 0 && currentText !== "" && (
           <TextType
             className="-translate-x-[50%] -translate-y-[50%] pointer-events-none"
             key={`stage-${currentStage}`}
