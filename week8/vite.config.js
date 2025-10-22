@@ -6,4 +6,8 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), wasm(), topLevelAwait(), tailwindcss()],
+  build: {
+    outDir: "../doc/week8",
+  },
+  base: "./",
 });

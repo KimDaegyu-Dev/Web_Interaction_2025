@@ -1,5 +1,5 @@
-import { World } from "../pkg/game_of_life";
-import { memory } from "../pkg/game_of_life_bg.wasm";
+import { World } from "wasm-game-of-life";
+import { memory } from "wasm-game-of-life/game_of_life_bg.wasm";
 import { CELL_SIZE } from "./constants";
 
 function createOffscreenCanvas(width: number, height: number): OffscreenCanvas {

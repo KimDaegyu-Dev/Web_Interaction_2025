@@ -1,14 +1,78 @@
-import { World } from "../pkg/game_of_life";
+import { World } from "wasm-game-of-life";
 
 const ALL_INITIAL_CONSONANTS = [
-  "ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ",
+  "ㄱ",
+  "ㄲ",
+  "ㄴ",
+  "ㄷ",
+  "ㄸ",
+  "ㄹ",
+  "ㅁ",
+  "ㅂ",
+  "ㅃ",
+  "ㅅ",
+  "ㅆ",
+  "ㅇ",
+  "ㅈ",
+  "ㅉ",
+  "ㅊ",
+  "ㅋ",
+  "ㅌ",
+  "ㅍ",
+  "ㅎ",
 ];
 const ALL_MEDIAL_VOWELS = [
-  "ㅏ", "ㅐ", "ㅑ", "ㅒ", "ㅓ", "ㅔ", "ㅕ", "ㅖ", "ㅗ", "ㅘ", "ㅙ", "ㅚ", "ㅛ", "ㅜ", "ㅝ", "ㅞ", "ㅟ", "ㅠ", "ㅡ", "ㅢ", "ㅣ",
+  "ㅏ",
+  "ㅐ",
+  "ㅑ",
+  "ㅒ",
+  "ㅓ",
+  "ㅔ",
+  "ㅕ",
+  "ㅖ",
+  "ㅗ",
+  "ㅘ",
+  "ㅙ",
+  "ㅚ",
+  "ㅛ",
+  "ㅜ",
+  "ㅝ",
+  "ㅞ",
+  "ㅟ",
+  "ㅠ",
+  "ㅡ",
+  "ㅢ",
+  "ㅣ",
 ];
 const ALL_FINAL_CONSONANTS = [
-    "", "ㄱ", "ㄲ", "ㄳ", "ㄴ", "ㄵ", "ㄶ", "ㄷ", "ㄹ", "ㄺ", "ㄻ", "ㄼ", "ㄽ", "ㄾ", "ㄿ", "ㅀ", "ㅁ", "ㅂ", "ㅄ", "ㅅ", "ㅆ", "ㅇ",
-    "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ",
+  "",
+  "ㄱ",
+  "ㄲ",
+  "ㄳ",
+  "ㄴ",
+  "ㄵ",
+  "ㄶ",
+  "ㄷ",
+  "ㄹ",
+  "ㄺ",
+  "ㄻ",
+  "ㄼ",
+  "ㄽ",
+  "ㄾ",
+  "ㄿ",
+  "ㅀ",
+  "ㅁ",
+  "ㅂ",
+  "ㅄ",
+  "ㅅ",
+  "ㅆ",
+  "ㅇ",
+  "ㅈ",
+  "ㅊ",
+  "ㅋ",
+  "ㅌ",
+  "ㅍ",
+  "ㅎ",
 ];
 
 export const updateHangulSetOnWasm = (world: World, text: string) => {
@@ -35,7 +99,9 @@ export const updateHangulSetOnWasm = (world: World, text: string) => {
       const initialIndex = Math.floor(relativeCode / INITIAL_MULTIPLIER);
       initialConsonants.add(ALL_INITIAL_CONSONANTS[initialIndex]);
 
-      const medialIndex = Math.floor((relativeCode % INITIAL_MULTIPLIER) / MEDIAL_MULTIPLIER);
+      const medialIndex = Math.floor(
+        (relativeCode % INITIAL_MULTIPLIER) / MEDIAL_MULTIPLIER
+      );
       medialVowels.add(ALL_MEDIAL_VOWELS[medialIndex]);
 
       const finalIndex = relativeCode % MEDIAL_MULTIPLIER;
@@ -43,18 +109,52 @@ export const updateHangulSetOnWasm = (world: World, text: string) => {
         const finalConsonant = ALL_FINAL_CONSONANTS[finalIndex];
         // Handle complex final consonants
         switch (finalConsonant) {
-          case "ㄳ": finalConsonants.add("ㄱ"); finalConsonants.add("ㅅ"); break;
-          case "ㄵ": finalConsonants.add("ㄴ"); finalConsonants.add("ㅈ"); break;
-          case "ㄶ": finalConsonants.add("ㄴ"); finalConsonants.add("ㅎ"); break;
-          case "ㄺ": finalConsonants.add("ㄹ"); finalConsonants.add("ㄱ"); break;
-          case "ㄻ": finalConsonants.add("ㄹ"); finalConsonants.add("ㅁ"); break;
-          case "ㄼ": finalConsonants.add("ㄹ"); finalConsonants.add("ㅂ"); break;
-          case "ㄽ": finalConsonants.add("ㄹ"); finalConsonants.add("ㅅ"); break;
-          case "ㄾ": finalConsonants.add("ㄹ"); finalConsonants.add("ㅌ"); break;
-          case "ㄿ": finalConsonants.add("ㄹ"); finalConsonants.add("ㅍ"); break;
-          case "ㅀ": finalConsonants.add("ㄹ"); finalConsonants.add("ㅎ"); break;
-          case "ㅄ": finalConsonants.add("ㅂ"); finalConsonants.add("ㅅ"); break;
-          default: finalConsonants.add(finalConsonant);
+          case "ㄳ":
+            finalConsonants.add("ㄱ");
+            finalConsonants.add("ㅅ");
+            break;
+          case "ㄵ":
+            finalConsonants.add("ㄴ");
+            finalConsonants.add("ㅈ");
+            break;
+          case "ㄶ":
+            finalConsonants.add("ㄴ");
+            finalConsonants.add("ㅎ");
+            break;
+          case "ㄺ":
+            finalConsonants.add("ㄹ");
+            finalConsonants.add("ㄱ");
+            break;
+          case "ㄻ":
+            finalConsonants.add("ㄹ");
+            finalConsonants.add("ㅁ");
+            break;
+          case "ㄼ":
+            finalConsonants.add("ㄹ");
+            finalConsonants.add("ㅂ");
+            break;
+          case "ㄽ":
+            finalConsonants.add("ㄹ");
+            finalConsonants.add("ㅅ");
+            break;
+          case "ㄾ":
+            finalConsonants.add("ㄹ");
+            finalConsonants.add("ㅌ");
+            break;
+          case "ㄿ":
+            finalConsonants.add("ㄹ");
+            finalConsonants.add("ㅍ");
+            break;
+          case "ㅀ":
+            finalConsonants.add("ㄹ");
+            finalConsonants.add("ㅎ");
+            break;
+          case "ㅄ":
+            finalConsonants.add("ㅂ");
+            finalConsonants.add("ㅅ");
+            break;
+          default:
+            finalConsonants.add(finalConsonant);
         }
       }
     } else if (ALL_INITIAL_CONSONANTS.includes(char)) {
@@ -62,7 +162,7 @@ export const updateHangulSetOnWasm = (world: World, text: string) => {
     } else if (ALL_MEDIAL_VOWELS.includes(char)) {
       medialVowels.add(char);
     } else if (ALL_FINAL_CONSONANTS.includes(char)) {
-        finalConsonants.add(char);
+      finalConsonants.add(char);
     }
   }
 

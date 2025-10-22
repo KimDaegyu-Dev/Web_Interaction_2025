@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { World } from "../pkg/game_of_life";
+import { World } from "wasm-game-of-life";
 import { updateHangulSetOnWasm } from "./hangul";
 import { getWebcamStream, getVideoStream, startMediaSource } from "./camera";
 import { SelfieSegmentation, Results } from "@mediapipe/selfie_segmentation";
@@ -17,8 +17,8 @@ import ScreenshotButton from "./components/ScreenshotButton";
 const MainStage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [hangulInput, setHangulInput] = useState<string>("가");
-  const [tempHangulInput, setTempHangulInput] = useState<string>("가");
+  const [hangulInput, setHangulInput] = useState<string>("배고프다");
+  const [tempHangulInput, setTempHangulInput] = useState<string>("배고프다");
   const [showVideoBackground, setShowVideoBackground] =
     useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -161,7 +161,7 @@ const MainStage: React.FC = () => {
             type="text"
             value={tempHangulInput}
             onChange={(e) => handleHangulInputChange(e.target.value)}
-            placeholder="ex: 가"
+            placeholder="ex: 읏 추워"
           />
         </div>
         <div className="control-group">
