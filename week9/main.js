@@ -128,7 +128,7 @@ function createHUDGrid(spacing = 0.1, count = 20) {
 
 // === 메인 카메라 ===
 const mainCamera = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.1, 100);
-mainCamera.position.set(0, 0, 10);
+mainCamera.position.set(1, 5, 5); // 모서리에서 대각선으로 내려다봄
 mainCamera.lookAt(0, 0, 0);
 
 // === 축 카메라 ===
@@ -331,12 +331,12 @@ pillarPositions.forEach((pos) => {
 
 // === 파라미터 ===
 const params = {
-  thetaX: 0, // x축: 수평 (0도)
-  thetaY: 90, // y축: 수직 (90도)
-  thetaZ: 225, // z축: 비스듬히 왼쪽 아래 (225도)
+  thetaX: 330, // x축: 오른쪽 아래로 (-30도 = 330도)
+  thetaY: 90, // y축: 위로 (90도)
+  thetaZ: 210, // z축: 왼쪽 아래로 (210도)
   scaleX: 1,
   scaleY: 1,
-  scaleZ: 0.7, // z축 스케일 줄여서 자연스러운 오블리크
+  scaleZ: 1, // 아이소메트릭 스타일
 };
 
 // === 투영 행렬 ===
@@ -387,7 +387,31 @@ function setObliqueProjection() {
 
 // === 프리셋 ===
 const presets = {
-  Standard: () => {
+  Isometric: () => {
+    Object.assign(params, {
+      thetaX: 330, // x축: 오른쪽 아래로 30도
+      thetaY: 90, // y축: 위로
+      thetaZ: 210, // z축: 왼쪽 아래로 30도
+      scaleX: 1,
+      scaleY: 1,
+      scaleZ: 1,
+    });
+    gui.updateDisplay();
+    setObliqueProjection();
+  },
+  Dimetric: () => {
+    Object.assign(params, {
+      thetaX: 335, // x축: 약간 더 오른쪽 아래
+      thetaY: 90, // y축: 위로
+      thetaZ: 205, // z축: 약간 덜 왼쪽
+      scaleX: 1,
+      scaleY: 1,
+      scaleZ: 0.5, // z축 스케일 줄임
+    });
+    gui.updateDisplay();
+    setObliqueProjection();
+  },
+  FrontOblique: () => {
     Object.assign(params, {
       thetaX: 0,
       thetaY: 90,
@@ -411,30 +435,6 @@ const presets = {
     gui.updateDisplay();
     setObliqueProjection();
   },
-  Cavalier: () => {
-    Object.assign(params, {
-      thetaX: 0,
-      thetaY: 90,
-      thetaZ: 225,
-      scaleX: 1,
-      scaleY: 1,
-      scaleZ: 1,
-    });
-    gui.updateDisplay();
-    setObliqueProjection();
-  },
-  Isometric: () => {
-    Object.assign(params, {
-      thetaX: 30,
-      thetaY: 150,
-      thetaZ: 270,
-      scaleX: 1,
-      scaleY: 1,
-      scaleZ: 1,
-    });
-    gui.updateDisplay();
-    setObliqueProjection();
-  },
 };
 
 // === GUI ===
@@ -452,10 +452,10 @@ folderScales.add(params, "scaleZ", 0.1, 2, 0.01).onChange(setObliqueProjection);
 folderScales.open();
 
 const folderPresets = gui.addFolder("Presets");
-folderPresets.add(presets, "Standard");
-folderPresets.add(presets, "Cabinet");
-folderPresets.add(presets, "Cavalier");
 folderPresets.add(presets, "Isometric");
+folderPresets.add(presets, "Dimetric");
+folderPresets.add(presets, "FrontOblique");
+folderPresets.add(presets, "Cabinet");
 folderPresets.open();
 
 // === ObliqueControls ===
