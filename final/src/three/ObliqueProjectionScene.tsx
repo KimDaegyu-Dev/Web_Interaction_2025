@@ -8,6 +8,7 @@ import { Room } from "./components/Room";
 import { InteractiveDisplayObjects } from "./components/DisplayObjects/InteractiveDisplayObjects";
 import { Decorations } from "./components/Decorations";
 import { useObliqueProjection } from "./hooks/useObliqueProjection";
+import { useObliqueControls } from "./hooks/useObliqueControls";
 import { DEFAULT_PARAMS, PRESETS } from "./config/presets";
 import type { ProjectionParams } from "./config/types";
 import { useDebugMode } from "../utils";
@@ -15,6 +16,9 @@ import { useDebugMode } from "../utils";
 function Scene() {
   const groupRef = useRef<THREE.Group>(null);
   const debugMode = useDebugMode();
+
+  // ObliqueControls 초기화 (패닝 & 줌)
+  const { getPanOffset } = useObliqueControls();
 
   // Leva GUI 컨트롤 - #debug가 있을 때만 활성화
   const params = useControls(
@@ -88,8 +92,8 @@ function Scene() {
     { render: () => debugMode },
   );
 
-  // Oblique 투영 적용
-  useObliqueProjection(groupRef, params);
+  // Oblique 투영 적용 (panOffset 포함)
+  useObliqueProjection(groupRef, params, getPanOffset);
 
   return (
     <>
