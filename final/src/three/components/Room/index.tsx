@@ -1,11 +1,21 @@
 import { Floor } from './Floor';
+import { GridFloor } from './GridFloor';
 import { Ceiling } from './Ceiling';
 import { Walls } from './Walls';
 
-export function Room() {
+interface RoomProps {
+  useGridFloor?: boolean;
+  gridFloorProps?: React.ComponentProps<typeof GridFloor>;
+}
+
+export function Room({ useGridFloor = false, gridFloorProps }: RoomProps = {}) {
   return (
     <>
-      <Floor />
+      {useGridFloor && gridFloorProps ? (
+        <GridFloor {...gridFloorProps} />
+      ) : (
+        <Floor />
+      )}
       <Ceiling />
       <Walls />
     </>

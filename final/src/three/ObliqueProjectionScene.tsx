@@ -9,16 +9,30 @@ import { InteractiveDisplayObjects } from "./components/DisplayObjects/Interacti
 import { Decorations } from "./components/Decorations";
 import { useObliqueProjection } from "./hooks/useObliqueProjection";
 import { useObliqueControls } from "./hooks/useObliqueControls";
+import { useGridInteraction } from "./hooks/useGridInteraction";
+import { calculateObliqueMatrix } from "./utils/projection";
 import { DEFAULT_PARAMS, PRESETS } from "./config/presets";
 import type { ProjectionParams } from "./config/types";
 import { useDebugMode } from "../utils";
 
 function Scene() {
-  const groupRef = useRef<THREE.Group>(null);
+  const gridGroupRef = useRef<THREE.Group>(null);
+  const objectGroupRef = useRef<THREE.Group>(null);
   const debugMode = useDebugMode();
 
   // ObliqueControls 초기화 (패닝 & 줌)
   const { getPanOffset } = useObliqueControls();
+
+  // Grid Interaction (Shift + 클릭으로 큐브 생성)
+  const {
+    hoveredCell,
+    cubes,
+    isShiftPressed,
+    onCellPointerOver,
+    onCellPointerOut,
+    onCellClick,
+    onCubeClick,
+  } = useGridInteraction();
 
   // Leva GUI 컨트롤 - #debug가 있을 때만 활성화
   const params = useControls(
@@ -92,18 +106,46 @@ function Scene() {
     { render: () => debugMode },
   );
 
-  // Oblique 투영 적용 (panOffset 포함)
-  useObliqueProjection(groupRef, params, getPanOffset);
+  // Oblique 투영 적용 - 그리드와 오브젝트 모두에
+  useObliqueProjection(gridGroupRef, params, getPanOffset);
+  useObliqueProjection(objectGroupRef, params, getPanOffset);
+
+  // Oblique 투영 행렬 계산 (그리드에서 역변환에 사용)
+  // panOffset은 매 프레임 변하므로 실시간으로 계산
+  const getObliqueMatrix = () => {
+    const panOffset = getPanOffset();
+    return calculateObliqueMatrix(params, panOffset);
+  };
 
   return (
     <>
       <MainCamera />
       <Lights />
 
-      {/* Oblique 투영 그룹 */}
-      <group ref={groupRef}>
-        <Room />
-        <InteractiveDisplayObjects />
+      {/* 그리드 - Oblique 투영 적용 */}
+      <group ref={gridGroupRef}>
+        <Room
+          useGridFloor={true}
+          gridFloorProps={{
+            gridSize: 1,
+            viewportGridSize: 30,
+            getPanOffset,
+            getObliqueMatrix, // Oblique 행렬 생성 함수 전달 (역변환용)
+            onCellPointerOver,
+            onCellPointerOut,
+            onCellClick,
+            hoveredCell,
+            isShiftPressed,
+          }}
+        />
+      </group>
+
+      {/* 오브젝트들 - Oblique 투영 적용 */}
+      <group ref={objectGroupRef}>
+        <InteractiveDisplayObjects
+          dynamicCubes={cubes}
+          onCubeClick={onCubeClick}
+        />
         <Decorations />
       </group>
 

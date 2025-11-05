@@ -1,7 +1,7 @@
-import { useRef } from 'react';
-import { useFrame, ThreeEvent } from '@react-three/fiber';
-import { useSpring, animated } from '@react-spring/three';
-import * as THREE from 'three';
+import { useRef } from "react";
+import { useFrame, ThreeEvent } from "@react-three/fiber";
+import { useSpring, animated } from "@react-spring/three";
+import * as THREE from "three";
 
 interface InteractiveCubeProps {
   position?: [number, number, number];
@@ -10,6 +10,7 @@ interface InteractiveCubeProps {
   rotationSpeed?: [number, number];
   onPointerOver?: (e: ThreeEvent<PointerEvent>) => void;
   onPointerOut?: (e: ThreeEvent<PointerEvent>) => void;
+  onClick?: (e: ThreeEvent<MouseEvent>) => void;
   hovered?: boolean;
 }
 
@@ -20,6 +21,7 @@ export function InteractiveCube({
   rotationSpeed = [0.01, 0.01],
   onPointerOver,
   onPointerOut,
+  onClick,
   hovered = false,
 }: InteractiveCubeProps) {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -46,6 +48,7 @@ export function InteractiveCube({
       receiveShadow
       onPointerOver={onPointerOver}
       onPointerOut={onPointerOut}
+      onClick={onClick}
     >
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial
@@ -58,4 +61,3 @@ export function InteractiveCube({
     </animated.mesh>
   );
 }
-

@@ -1,10 +1,9 @@
-import { ObliqueProjectionScene } from '../three/ObliqueProjectionScene';
+import { ObliqueProjectionScene } from "../three/ObliqueProjectionScene";
 
 export function ObliqueProjectionPage() {
   return (
-    <div className="w-full h-screen">
+    <div className="h-screen w-full">
       <ObliqueProjectionScene />
     </div>
   );
 }
-
