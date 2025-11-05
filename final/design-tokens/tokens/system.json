@@ -1,0 +1,567 @@
+{
+  "color": {
+    "primary": {
+      "100": {
+        "$type": "color",
+        "$value": "#fff1ec"
+      },
+      "200": {
+        "$type": "color",
+        "$value": "#ffe2d9"
+      },
+      "300": {
+        "$type": "color",
+        "$value": "#ffbda7"
+      },
+      "400": {
+        "$type": "color",
+        "$value": "#ff926d"
+      },
+      "500": {
+        "$type": "color",
+        "$value": "#ff6d3b"
+      },
+      "700": {
+        "$type": "color",
+        "$value": "#cc3a08"
+      },
+      "800": {
+        "$type": "color",
+        "$value": "#9a2b06"
+      },
+      "900": {
+        "$type": "color",
+        "$value": "#5c1a04"
+      },
+      "main": {
+        "$type": "color",
+        "$value": "#ff480a"
+      }
+    },
+    "grayscale": {
+      "white": {
+        "$type": "color",
+        "$value": "#ffffff"
+      },
+      "black": {
+        "$type": "color",
+        "$value": "#121212"
+      },
+      "g1": {
+        "$type": "color",
+        "$value": "#f4f5f7"
+      },
+      "g2": {
+        "$type": "color",
+        "$value": "#e4e4e4"
+      },
+      "g3": {
+        "$type": "color",
+        "$value": "#b7b7b7"
+      },
+      "g4": {
+        "$type": "color",
+        "$value": "#979797"
+      },
+      "g5": {
+        "$type": "color",
+        "$value": "#6e6e6e"
+      },
+      "g6": {
+        "$type": "color",
+        "$value": "#5b5b5b"
+      },
+      "g7": {
+        "$type": "color",
+        "$value": "#303030"
+      },
+      "g8": {
+        "$type": "color",
+        "$value": "#1c1c1c"
+      }
+    }
+  },
+  "spacing": {
+    "xs": {
+      "$type": "number",
+      "$value": 4,
+      "$description": "Extra small spacing (4px)"
+    },
+    "sm": {
+      "$type": "number",
+      "$value": 8,
+      "$description": "Small spacing (8px)"
+    },
+    "md": {
+      "$type": "number",
+      "$value": 12,
+      "$description": "Medium spacing (12px)"
+    },
+    "lg": {
+      "$type": "number",
+      "$value": 16,
+      "$description": "Large spacing (16px)"
+    },
+    "xl": {
+      "$type": "number",
+      "$value": 24,
+      "$description": "Extra large spacing (24px)"
+    }
+  },
+  "border": {
+    "width": {
+      "sm": {
+        "$type": "number",
+        "$value": 1,
+        "$description": "Small border width (1px)"
+      },
+      "md": {
+        "$type": "number",
+        "$value": 2,
+        "$description": "Medium border width (2px)"
+      }
+    },
+    "radius": {
+      "sm": {
+        "$type": "number",
+        "$value": 4,
+        "$description": "Small corner radius (4px)"
+      },
+      "md": {
+        "$type": "number",
+        "$value": 8,
+        "$description": "Medium corner radius (8px)"
+      },
+      "lg": {
+        "$type": "number",
+        "$value": 12,
+        "$description": "Large corner radius (12px)"
+      },
+      "full": {
+        "$type": "number",
+        "$value": 9999,
+        "$description": "Full circular radius"
+      }
+    }
+  },
+  "typography": {
+    "fontFamilies": {
+      "sans": {
+        "$type": "string",
+        "$value": "Inter",
+        "$description": "Primary sans-serif font"
+      },
+      "serif": {
+        "$type": "string",
+        "$value": "Noto Serif",
+        "$description": "Serif font family"
+      },
+      "pretendard": {
+        "$type": "fontFamilies",
+        "$value": "Pretendard"
+      }
+    },
+    "fontWeight": {
+      "bold": {
+        "$type": "fontWeights",
+        "$value": "Bold"
+      },
+      "semibold": {
+        "$type": "fontWeights",
+        "$value": "SemiBold"
+      },
+      "medium": {
+        "$type": "fontWeights",
+        "$value": "Medium"
+      },
+      "regular": {
+        "$type": "fontWeights",
+        "$value": "Regular"
+      }
+    },
+    "fontSizes": {
+      "xs": {
+        "$type": "fontSizes",
+        "$value": "12"
+      },
+      "sm": {
+        "$type": "fontSizes",
+        "$value": "14"
+      },
+      "md": {
+        "$type": "fontSizes",
+        "$value": "16"
+      },
+      "lg": {
+        "$type": "fontSizes",
+        "$value": "18"
+      },
+      "xl": {
+        "$type": "fontSizes",
+        "$value": 20
+      },
+      "2xl": {
+        "$type": "fontSizes",
+        "$value": 24
+      }
+    },
+    "lineHeight": {
+      "tight": {
+        "$type": "lineHeights",
+        "$value": "140%"
+      },
+      "normal": {
+        "$type": "lineHeights",
+        "$value": "150%"
+      }
+    },
+    "letterSpacing": {
+      "tight": {
+        "$type": "letterSpacing",
+        "$value": "-5%"
+      },
+      "default": {
+        "$type": "letterSpacing",
+        "$value": "-3%"
+      },
+      "wide": {
+        "$type": "letterSpacing",
+        "$value": "3%"
+      }
+    },
+    "paragraphSpacing": {
+      "default": {
+        "$type": "paragraphSpacing",
+        "$value": 0
+      }
+    },
+    "paragraphIndent": {
+      "none": {
+        "$type": "dimension",
+        "$value": "0px"
+      }
+    },
+    "textCase": {
+      "none": {
+        "$type": "textCase",
+        "$value": "none"
+      }
+    },
+    "textDecoration": {
+      "none": {
+        "$type": "textDecoration",
+        "$value": "none"
+      }
+    }
+  },
+  "elevation": {
+    "1": {
+      "$type": "shadow",
+      "$value": "0 1px 2px rgba(0,0,0,0.08)",
+      "$description": "Low elevation shadow"
+    },
+    "2": {
+      "$type": "shadow",
+      "$value": "0 2px 4px rgba(0,0,0,0.12)",
+      "$description": "Medium elevation shadow"
+    },
+    "3": {
+      "$type": "shadow",
+      "$value": "0 4px 8px rgba(0,0,0,0.16)",
+      "$description": "High elevation shadow"
+    }
+  },
+  "opacity": {
+    "disabled": {
+      "$type": "number",
+      "$value": 0.4,
+      "$description": "Disabled state opacity"
+    },
+    "overlay": {
+      "$type": "number",
+      "$value": 0.32,
+      "$description": "Overlay opacity"
+    },
+    "focus-ring": {
+      "$type": "number",
+      "$value": 0.16,
+      "$description": "Focus outline opacity"
+    }
+  },
+  "shadow": {
+    "drop-default": {
+      "$type": "boxShadow",
+      "$value": [
+        {
+          "color": "#9999991a",
+          "x": 2,
+          "y": 2,
+          "blur": 10,
+          "spread": 0,
+          "$type": "dropShadow"
+        },
+        {
+          "color": "#9999991a",
+          "x": -2,
+          "y": -2,
+          "blur": 10,
+          "spread": 0,
+          "$type": "dropShadow"
+        }
+      ]
+    }
+  },
+  "motion": {
+    "duration": {
+      "fast": {
+        "$type": "number",
+        "$value": 100,
+        "$description": "Fast animation (100ms)"
+      },
+      "normal": {
+        "$type": "number",
+        "$value": 200,
+        "$description": "Normal animation (200ms)"
+      },
+      "slow": {
+        "$type": "number",
+        "$value": 400,
+        "$description": "Slow animation (400ms)"
+      }
+    },
+    "easing": {
+      "standard": {
+        "$type": "string",
+        "$value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "$description": "Standard easing"
+      },
+      "exit": {
+        "$type": "string",
+        "$value": "cubic-bezier(0.4, 0, 1, 1)",
+        "$description": "Exit easing curve"
+      }
+    }
+  },
+  "z-index": {
+    "base": {
+      "$type": "number",
+      "$value": 0,
+      "$description": "Base layer"
+    },
+    "overlay": {
+      "$type": "number",
+      "$value": 100,
+      "$description": "Overlay layer"
+    },
+    "modal": {
+      "$type": "number",
+      "$value": 200,
+      "$description": "Modal layer"
+    },
+    "toast": {
+      "$type": "number",
+      "$value": 300,
+      "$description": "Toast layer"
+    }
+  },
+  "grid": {
+    "mobile-4-columns": {
+      "columns": {
+        "$type": "number",
+        "$value": 4,
+        "$description": "Grid column count"
+      },
+      "gutter": {
+        "$type": "number",
+        "$value": 8,
+        "$description": "Grid gutter spacing"
+      },
+      "max-width": {
+        "$type": "number",
+        "$value": 360,
+        "$description": "Max layout width"
+      },
+      "min-width": {
+        "$type": "number",
+        "$value": 440
+      },
+      "max-height": {
+        "$type": "number",
+        "$value": 812
+      },
+      "min-height": {
+        "$type": "number",
+        "$value": 956
+      },
+      "margin": {
+        "$type": "number",
+        "$value": 20
+      }
+    },
+    "mobile-6-columns": {
+      "columns": {
+        "$type": "number",
+        "$value": 6,
+        "$description": "Grid column count"
+      },
+      "gutter": {
+        "$type": "number",
+        "$value": 8,
+        "$description": "Grid gutter spacing"
+      },
+      "max-width": {
+        "$type": "number",
+        "$value": 360,
+        "$description": "Max layout width"
+      },
+      "min-width": {
+        "$type": "number",
+        "$value": 440
+      },
+      "max-height": {
+        "$type": "number",
+        "$value": 812
+      },
+      "min-height": {
+        "$type": "number",
+        "$value": 956
+      },
+      "margin": {
+        "$type": "number",
+        "$value": 20
+      }
+    },
+    "tablet": {
+      "columns": {
+        "$type": "number",
+        "$value": 8,
+        "$description": "Grid column count"
+      },
+      "gutter": {
+        "$type": "number",
+        "$value": 16,
+        "$description": "Grid gutter spacing"
+      },
+      "max-width": {
+        "$type": "number",
+        "$value": 1024,
+        "$description": "Max layout width"
+      },
+      "min-width": {
+        "$type": "number",
+        "$value": 720
+      },
+      "max-height": {
+        "$type": "number",
+        "$value": 1366
+      },
+      "min-height": {
+        "$type": "number",
+        "$value": 1133
+      },
+      "margin": {
+        "$type": "number",
+        "$value": 40
+      }
+    },
+    "desktop": {
+      "columns": {
+        "$type": "number",
+        "$value": 12,
+        "$description": "Grid column count"
+      },
+      "gutter": {
+        "$type": "number",
+        "$value": 24,
+        "$description": "Grid gutter spacing"
+      },
+      "max-width": {
+        "$type": "number",
+        "$value": 1920,
+        "$description": "Max layout width"
+      },
+      "min-width": {
+        "$type": "number",
+        "$value": 1440
+      },
+      "max-height": {
+        "$type": "number",
+        "$value": 1080
+      },
+      "min-height": {
+        "$type": "number",
+        "$value": 900
+      },
+      "margin": {
+        "$type": "number",
+        "$value": 120
+      }
+    },
+    "laptop": {
+      "columns": {
+        "$type": "number",
+        "$value": 8,
+        "$description": "Grid column count"
+      },
+      "gutter": {
+        "$type": "number",
+        "$value": 20,
+        "$description": "Grid gutter spacing"
+      },
+      "max-width": {
+        "$type": "number",
+        "$value": 1440,
+        "$description": "Max layout width"
+      },
+      "min-width": {
+        "$type": "number",
+        "$value": 1024
+      },
+      "max-height": {
+        "$type": "number",
+        "$value": 960
+      },
+      "min-height": {
+        "$type": "number",
+        "$value": 720
+      },
+      "margin": {
+        "$type": "number",
+        "$value": 60
+      }
+    }
+  },
+  "dimension": {
+    "icon": {
+      "sm": {
+        "$type": "number",
+        "$value": 16,
+        "$description": "Small icon size"
+      },
+      "md": {
+        "$type": "number",
+        "$value": 20,
+        "$description": "Medium icon size"
+      },
+      "lg": {
+        "$type": "number",
+        "$value": 24,
+        "$description": "Large icon size"
+      }
+    },
+    "button": {
+      "height": {
+        "$type": "number",
+        "$value": 40,
+        "$description": "Default button height"
+      }
+    },
+    "input": {
+      "height": {
+        "$type": "number",
+        "$value": 44,
+        "$description": "Input field height"
+      }
+    }
+  }
+}
