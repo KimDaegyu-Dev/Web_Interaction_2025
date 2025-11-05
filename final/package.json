@@ -11,15 +11,20 @@
     "build-token": "cd design-tokens && style-dictionary build"
   },
   "dependencies": {
+    "@react-spring/three": "^10.0.3",
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.4.0",
     "@tanstack/react-query": "^5.90.5",
     "@tanstack/react-query-devtools": "^5.90.2",
     "axios": "^1.13.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.0",
+    "leva": "^0.10.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.9.5",
-    "tailwind-merge": "^3.3.1"
+    "tailwind-merge": "^3.3.1",
+    "three": "^0.181.0"
   },
   "engines": {
     "node": ">=20"
@@ -33,6 +38,7 @@
     "@types/node": "^22.15.16",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
+    "@types/three": "^0.181.0",
     "@vitejs/plugin-react": "^4.6.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.30.1",

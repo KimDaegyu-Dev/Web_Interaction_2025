@@ -2,6 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as ReactRouter, Routes, Route } from "react-router-dom";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import TestPage from "./pages/TestPage";
+import { ObliqueProjectionPage } from "./pages/ObliqueProjectionPage";
+import { useDebugMode } from "./utils";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -10,6 +13,7 @@ const queryClient = new QueryClient({
     },
   },
 });
+
 declare global {
   interface Window {
     __TANSTACK_QUERY_CLIENT__: import("@tanstack/query-core").QueryClient;
@@ -20,14 +24,18 @@ declare global {
 window.__TANSTACK_QUERY_CLIENT__ = queryClient;
 
 export function Router() {
+  const debugMode = useDebugMode();
+
   return (
     <QueryClientProvider client={queryClient}>
       <ReactRouter>
         <Routes>
-          <Route element={<TestPage />} path="/"></Route>
+          <Route element={<ObliqueProjectionPage />} path="/"></Route>
+          <Route element={<TestPage />} path="/test"></Route>
         </Routes>
       </ReactRouter>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {/* TanStack Query Devtools: #debug가 있을 때만 렌더링 */}
+      {debugMode && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   );
 }
