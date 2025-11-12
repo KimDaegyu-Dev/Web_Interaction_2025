@@ -39,7 +39,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: "dist",
+    outDir: "docs/week10",
     assetsDir: "assets",
     sourcemap: true,
     minify: true,

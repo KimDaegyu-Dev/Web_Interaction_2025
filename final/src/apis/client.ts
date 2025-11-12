@@ -15,7 +15,7 @@ client.interceptors.request.use(
     // TODO: accessToken 가져오기
     const accessToken = "test";
     if (accessToken) {
-      config.headers = config.headers || {};
+      // config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
     console.log(config.headers);

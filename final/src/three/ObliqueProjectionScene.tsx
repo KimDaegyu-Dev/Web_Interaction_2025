@@ -1,6 +1,6 @@
-import { useRef } from "react";
-import { Canvas } from "@react-three/fiber";
-import { useControls } from "leva";
+import { useRef, useEffect } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
+import { useControls, button } from "leva";
 import * as THREE from "three";
 import { MainCamera } from "./cameras/MainCamera";
 import { Lights } from "./lights/Lights";
@@ -16,9 +16,16 @@ import type { ProjectionParams } from "./config/types";
 import { useDebugMode } from "../utils";
 
 function Scene() {
-  const gridGroupRef = useRef<THREE.Group>(null);
+  const gridFloorGroupRef = useRef<THREE.Group>(null); // GridFloor용
+  const roomGroupRef = useRef<THREE.Group>(null); // Room 벽/천장용
   const objectGroupRef = useRef<THREE.Group>(null);
   const debugMode = useDebugMode();
+  const { scene } = useThree();
+
+  // 배경색 설정
+  useEffect(() => {
+    scene.background = new THREE.Color("#1a1a2e");
+  }, [scene]);
 
   // ObliqueControls 초기화 (패닝 & 줌)
   const { getPanOffset } = useObliqueControls();
@@ -82,32 +89,25 @@ function Scene() {
   useControls(
     "Presets" as const,
     {
-      Isometric: {
-        value: () => {
-          Object.assign(params, PRESETS.Isometric);
-        },
-      },
-      Dimetric: {
-        value: () => {
-          Object.assign(params, PRESETS.Dimetric);
-        },
-      },
-      FrontOblique: {
-        value: () => {
-          Object.assign(params, PRESETS.FrontOblique);
-        },
-      },
-      Cabinet: {
-        value: () => {
-          Object.assign(params, PRESETS.Cabinet);
-        },
-      },
+      Isometric: button(() => {
+        Object.assign(params, PRESETS.Isometric);
+      }),
+      Dimetric: button(() => {
+        Object.assign(params, PRESETS.Dimetric);
+      }),
+      FrontOblique: button(() => {
+        Object.assign(params, PRESETS.FrontOblique);
+      }),
+      Cabinet: button(() => {
+        Object.assign(params, PRESETS.Cabinet);
+      }),
     },
     { render: () => debugMode },
   );
 
-  // Oblique 투영 적용 - 그리드와 오브젝트 모두에
-  useObliqueProjection(gridGroupRef, params, getPanOffset);
+  // Oblique 투영 적용 - GridFloor, Room, 오브젝트 모두에
+  useObliqueProjection(gridFloorGroupRef, params, getPanOffset);
+  useObliqueProjection(roomGroupRef, params, getPanOffset);
   useObliqueProjection(objectGroupRef, params, getPanOffset);
 
   // Oblique 투영 행렬 계산 (그리드에서 역변환에 사용)
@@ -117,19 +117,27 @@ function Scene() {
     return calculateObliqueMatrix(params, panOffset);
   };
 
+  // AxesHelper 추가
+  useEffect(() => {
+    const axesHelper = new THREE.AxesHelper(2);
+    scene.add(axesHelper);
+    return () => {
+      scene.remove(axesHelper);
+      axesHelper.dispose();
+    };
+  }, [scene]);
+
   return (
     <>
       <MainCamera />
       <Lights />
 
-      {/* 그리드 - Oblique 투영 적용 */}
-      <group ref={gridGroupRef}>
+      {/* GridFloor - Oblique 투영 적용하되 별도 group에서 레이캐스팅 활성화 */}
+      <group ref={gridFloorGroupRef}>
         <Room
           useGridFloor={true}
           gridFloorProps={{
             gridSize: 1,
-            viewportGridSize: 30,
-            getPanOffset,
             getObliqueMatrix, // Oblique 행렬 생성 함수 전달 (역변환용)
             onCellPointerOver,
             onCellPointerOut,
@@ -140,6 +148,11 @@ function Scene() {
         />
       </group>
 
+      {/* Room 벽/천장 - Oblique 투영 적용 */}
+      <group ref={roomGroupRef}>
+        <Room useGridFloor={false} />
+      </group>
+
       {/* 오브젝트들 - Oblique 투영 적용 */}
       <group ref={objectGroupRef}>
         <InteractiveDisplayObjects
@@ -148,9 +161,6 @@ function Scene() {
         />
         <Decorations />
       </group>
-
-      {/* 좌표축 헬퍼 */}
-      <axesHelper args={[2]} />
     </>
   );
 }
@@ -162,13 +172,8 @@ export function ObliqueProjectionScene() {
         shadows
         gl={{
           antialias: true,
-          shadowMap: {
-            enabled: true,
-            type: THREE.PCFSoftShadowMap,
-          },
         }}
       >
-        <color attach="background" args={["#1a1a2e"]} />
         <Scene />
       </Canvas>
     </div>

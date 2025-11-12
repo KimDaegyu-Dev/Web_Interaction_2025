@@ -52,8 +52,6 @@ export function useGridInteraction() {
   // Shift + 클릭으로 큐브 생성 또는 제거
   const onCellClick = useCallback(
     (e: ThreeEvent<MouseEvent>, x: number, z: number) => {
-      console.log("onCellClick:", { shiftKey: e.shiftKey, x, z });
-
       if (e.shiftKey) {
         e.stopPropagation();
 
@@ -64,13 +62,11 @@ export function useGridInteraction() {
 
         if (existingCube) {
           // 큐브가 있으면 제거
-          console.log("Removing cube at:", { x, z });
           setCubes((prev) =>
             prev.filter((cube) => cube.id !== existingCube.id),
           );
         } else {
           // 큐브가 없으면 생성
-          console.log("Creating cube at:", { x, z });
           const newCube: Cube = {
             id: `cube-${Date.now()}-${Math.random()}`,
             position: [x, 0, z],

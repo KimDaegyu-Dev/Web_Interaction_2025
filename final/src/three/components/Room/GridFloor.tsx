@@ -35,8 +35,8 @@ export function GridFloor({
     const result: Array<{ x: number; z: number }> = [];
     const halfSize = (viewportGridSize * gridSize) / 2;
 
-    for (let x = -halfSize + gridSize / 2; x < halfSize; x += gridSize) {
-      for (let z = -halfSize + gridSize / 2; z < halfSize; z += gridSize) {
+    for (let x = -halfSize; x < halfSize; x += gridSize) {
+      for (let z = -halfSize; z < halfSize; z += gridSize) {
         result.push({ x, z });
       }
     }
@@ -82,7 +82,7 @@ export function GridFloor({
 
         {/* 그리드 셀들 */}
         {cells.map(({ x, z }) => {
-          // 실제 월드 좌표 계산 (그룹의 위치 + 로컬 위치)
+          // 실제 월드 좌표 계산 (groupRef position + 로컬 좌표)
           const worldX = groupRef.current ? groupRef.current.position.x + x : x;
           const worldZ = groupRef.current ? groupRef.current.position.z + z : z;
 
@@ -136,36 +136,22 @@ export function GridFloor({
                     .applyMatrix4(inverseMatrix);
                   originalX = originalPoint.x;
                   originalZ = originalPoint.z;
-                  console.log("GridFloor click:", {
-                    transformedPoint: {
-                      x: transformedPoint.x,
-                      y: transformedPoint.y,
-                      z: transformedPoint.z,
-                    },
-                    originalPoint: {
-                      x: originalPoint.x,
-                      y: originalPoint.y,
-                      z: originalPoint.z,
-                    },
-                    shiftKey: e.shiftKey,
-                  });
                 }
 
                 const snappedX = Math.round(originalX / gridSize) * gridSize;
                 const snappedZ = Math.round(originalZ / gridSize) * gridSize;
-                console.log("Final coordinates:", { snappedX, snappedZ });
                 onCellClick(e, snappedX, snappedZ);
               }}
             >
               <planeGeometry args={[gridSize * 0.95, gridSize * 0.95]} />
               <meshStandardMaterial
-                color={isHovered ? 0x00ff88 : 0x2d3436}
-                emissive={isHovered ? 0x00ff88 : 0x000000}
-                emissiveIntensity={isHovered ? 0.3 : 0}
+                color={isHovered ? 0x00ff00 : 0x2d3436}
+                emissive={isHovered ? 0x00ff00 : 0x000000}
+                emissiveIntensity={isHovered ? 0.8 : 0}
                 roughness={0.8}
                 metalness={0.2}
                 transparent
-                opacity={isHovered ? 0.8 : 0.3}
+                opacity={isHovered ? 1.0 : 0.3}
               />
             </mesh>
           );

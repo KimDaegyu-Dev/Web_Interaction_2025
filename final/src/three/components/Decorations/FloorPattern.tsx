@@ -1,12 +1,13 @@
-import { ROOM_SIZE, ROOM_HEIGHT, PATTERN_SIZE } from '../../config/constants';
+import { ROOM_SIZE, ROOM_HEIGHT, PATTERN_SIZE } from "../../config/constants";
 
 export function FloorPattern() {
-  const tiles: JSX.Element[] = [];
+  const tiles: React.ReactElement[] = [];
 
   for (let x = -ROOM_SIZE / 2; x < ROOM_SIZE / 2; x += PATTERN_SIZE) {
     for (let z = -ROOM_SIZE / 2; z < ROOM_SIZE / 2; z += PATTERN_SIZE) {
       if (
-        (Math.floor(x / PATTERN_SIZE) + Math.floor(z / PATTERN_SIZE)) % 2 === 0
+        (Math.floor(x / PATTERN_SIZE) + Math.floor(z / PATTERN_SIZE)) % 2 ===
+        0
       ) {
         const key = `tile-${x}-${z}`;
         tiles.push(
@@ -26,7 +27,7 @@ export function FloorPattern() {
               roughness={0.9}
               metalness={0.1}
             />
-          </mesh>
+          </mesh>,
         );
       }
     }
@@ -34,4 +35,3 @@ export function FloorPattern() {
 
   return <>{tiles}</>;
 }
-
