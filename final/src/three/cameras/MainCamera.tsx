@@ -1,4 +1,4 @@
-import { OrthographicCamera } from '@react-three/drei';
+import { OrthographicCamera } from "@react-three/drei";
 
 export function MainCamera() {
   return (
@@ -11,4 +11,3 @@ export function MainCamera() {
     />
   );
 }
-

@@ -1,7 +1,6 @@
-import { useRef, useMemo } from "react";
-import { ThreeEvent, useFrame, useThree } from "@react-three/fiber";
+import { useRef } from "react";
+import { ThreeEvent, useFrame } from "@react-three/fiber";
 import { ROOM_HEIGHT } from "../../config/constants";
-import { screenToWorldCoords } from "../../utils/projection";
 import * as THREE from "three";
 
 interface GridFloorProps {
@@ -21,27 +20,13 @@ export function GridFloor({
   viewportGridSize = 30, // 카메라 주변 30x30 그리드만 렌더링
   getPanOffset,
   getObliqueMatrix,
-  onCellPointerOver,
-  onCellPointerOut,
+  onCellPointerOver: _onCellPointerOver, // Scene에서 직접 처리하므로 사용하지 않음
+  onCellPointerOut: _onCellPointerOut, // Scene에서 직접 처리하므로 사용하지 않음
   onCellClick,
-  hoveredCell,
-  isShiftPressed,
+  hoveredCell: _hoveredCell, // Scene에서 직접 처리하므로 사용하지 않음
+  isShiftPressed: _isShiftPressed, // Scene에서 직접 처리하므로 사용하지 않음
 }: GridFloorProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const { camera, gl } = useThree();
-
-  // 고정된 그리드 셀 생성 (뷰포트 크기만큼)
-  const cells = useMemo(() => {
-    const result: Array<{ x: number; z: number }> = [];
-    const halfSize = (viewportGridSize * gridSize) / 2;
-
-    for (let x = -halfSize; x < halfSize; x += gridSize) {
-      for (let z = -halfSize; z < halfSize; z += gridSize) {
-        result.push({ x, z });
-      }
-    }
-    return result;
-  }, [gridSize, viewportGridSize]);
 
   // panOffset을 따라 그리드 이동
   useFrame(() => {
@@ -58,14 +43,39 @@ export function GridFloor({
     }
   });
 
+  // 마우스 위치를 그리드 좌표로 변환하는 헬퍼 함수 (클릭용)
+  const convertPointToGridCoords = (
+    transformedPoint: THREE.Vector3,
+  ): { x: number; z: number } => {
+    let originalX = transformedPoint.x;
+    let originalZ = transformedPoint.z;
+
+    if (getObliqueMatrix) {
+      const inverseMatrix = getObliqueMatrix().clone().invert();
+      const originalPoint = transformedPoint
+        .clone()
+        .applyMatrix4(inverseMatrix);
+      originalX = originalPoint.x;
+      originalZ = originalPoint.z;
+    }
+
+    const snappedX = Math.round(originalX / gridSize) * gridSize;
+    const snappedZ = Math.round(originalZ / gridSize) * gridSize;
+    return { x: snappedX, z: snappedZ };
+  };
+
   return (
     <group position={[0, -ROOM_HEIGHT / 2 + 0.01, 0]}>
       <group ref={groupRef}>
-        {/* 베이스 Floor - 그리드와 함께 이동 */}
+        {/* 클릭 이벤트용 투명한 평면 - 보이지 않지만 클릭 감지용 */}
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, -0.01, 0]}
-          receiveShadow
+          position={[0, 0, 0]}
+          onClick={(e) => {
+            e.stopPropagation();
+            const gridCoords = convertPointToGridCoords(e.point);
+            onCellClick(e, gridCoords.x, gridCoords.z);
+          }}
         >
           <planeGeometry
             args={[
@@ -73,89 +83,8 @@ export function GridFloor({
               viewportGridSize * gridSize * 2,
             ]}
           />
-          <meshStandardMaterial
-            color={0x1a1a1a}
-            roughness={0.9}
-            metalness={0.1}
-          />
+          <meshStandardMaterial transparent opacity={0} visible={false} />
         </mesh>
-
-        {/* 그리드 셀들 */}
-        {cells.map(({ x, z }) => {
-          // 실제 월드 좌표 계산 (groupRef position + 로컬 좌표)
-          const worldX = groupRef.current ? groupRef.current.position.x + x : x;
-          const worldZ = groupRef.current ? groupRef.current.position.z + z : z;
-
-          const isHovered =
-            hoveredCell?.x === worldX &&
-            hoveredCell?.z === worldZ &&
-            isShiftPressed;
-
-          return (
-            <mesh
-              key={`cell-${x}-${z}`}
-              position={[x, 0, z]}
-              rotation={[-Math.PI / 2, 0, 0]}
-              onPointerOver={(e) => {
-                e.stopPropagation();
-                // e.point는 Oblique 변환이 적용된 좌표
-                // 역변환하여 원본 월드 좌표로 되돌림
-                const transformedPoint = e.point;
-                let originalX = transformedPoint.x;
-                let originalZ = transformedPoint.z;
-
-                if (getObliqueMatrix) {
-                  const inverseMatrix = getObliqueMatrix().clone().invert();
-                  const originalPoint = transformedPoint
-                    .clone()
-                    .applyMatrix4(inverseMatrix);
-                  originalX = originalPoint.x;
-                  originalZ = originalPoint.z;
-                }
-
-                const snappedX = Math.round(originalX / gridSize) * gridSize;
-                const snappedZ = Math.round(originalZ / gridSize) * gridSize;
-                onCellPointerOver(snappedX, snappedZ);
-              }}
-              onPointerOut={(e) => {
-                e.stopPropagation();
-                onCellPointerOut();
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                // e.point는 Oblique 변환이 적용된 좌표
-                // 역변환하여 원본 월드 좌표로 되돌림
-                const transformedPoint = e.point;
-                let originalX = transformedPoint.x;
-                let originalZ = transformedPoint.z;
-
-                if (getObliqueMatrix) {
-                  const inverseMatrix = getObliqueMatrix().clone().invert();
-                  const originalPoint = transformedPoint
-                    .clone()
-                    .applyMatrix4(inverseMatrix);
-                  originalX = originalPoint.x;
-                  originalZ = originalPoint.z;
-                }
-
-                const snappedX = Math.round(originalX / gridSize) * gridSize;
-                const snappedZ = Math.round(originalZ / gridSize) * gridSize;
-                onCellClick(e, snappedX, snappedZ);
-              }}
-            >
-              <planeGeometry args={[gridSize * 0.95, gridSize * 0.95]} />
-              <meshStandardMaterial
-                color={isHovered ? 0x00ff00 : 0x2d3436}
-                emissive={isHovered ? 0x00ff00 : 0x000000}
-                emissiveIntensity={isHovered ? 0.8 : 0}
-                roughness={0.8}
-                metalness={0.2}
-                transparent
-                opacity={isHovered ? 1.0 : 0.3}
-              />
-            </mesh>
-          );
-        })}
       </group>
     </group>
   );

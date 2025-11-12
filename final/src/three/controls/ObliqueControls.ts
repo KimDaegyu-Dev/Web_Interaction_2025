@@ -67,7 +67,7 @@ export class ObliqueControls {
     const dy = e.clientY - this.prevMouse.y;
     this.prevMouse.set(e.clientX, e.clientY);
 
-    // 드래그 → 평행 이동
+    // 드래그 → 평행 이동 (카메라는 고정, panOffset만 변경)
     const panX = -dx * this.panSpeed;
     const panY = dy * this.panSpeed;
     this.panOffset.add(new THREE.Vector3(panX, panY, 0));
