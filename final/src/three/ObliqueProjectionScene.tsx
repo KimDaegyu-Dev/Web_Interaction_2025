@@ -108,12 +108,68 @@ function Scene({ gridInteraction, mousePosition }: SceneProps) {
       console.log("📍 NDC 좌표:", { ndcX, ndcY });
 
       // Raycaster 생성
+      // setFromCamera는 카메라의 projection matrix를 사용하여 NDC를 world ray로 변환합니다.
+      // OrthographicCamera의 경우:
+      // 1. NDC 좌표를 카메라의 view space로 변환 (projection matrix의 역행렬 사용)
+      // 2. 카메라의 world position과 rotation을 사용하여 world space로 변환
+      // 3. Ray의 origin은 카메라의 near plane 상의 점이고, direction은 카메라에서 그 점을 향하는 방향입니다.
       const raycaster = new THREE.Raycaster();
       raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
-      console.log("🎯 Ray:", {
+
+      console.log("🎯 Ray (setFromCamera 결과):", {
         origin: raycaster.ray.origin,
         direction: raycaster.ray.direction,
+        note: "Ray는 이미 world coordinate입니다. 카메라의 world position과 rotation이 적용되어 있습니다.",
       });
+
+      // 디버깅: 카메라 정보 확인
+      if (camera instanceof THREE.OrthographicCamera) {
+        console.log("📷 카메라 정보:", {
+          position: camera.position,
+          rotation: camera.rotation,
+          zoom: camera.zoom,
+          left: camera.left,
+          right: camera.right,
+          top: camera.top,
+          bottom: camera.bottom,
+          near: camera.near,
+          far: camera.far,
+        });
+
+        // NDC를 카메라의 view space로 직접 변환해보기
+        const viewSpaceX =
+          (ndcX * (camera.right - camera.left)) / 2 / camera.zoom;
+        const viewSpaceY =
+          (ndcY * (camera.top - camera.bottom)) / 2 / camera.zoom;
+        const viewSpaceZ = -camera.near; // near plane 상의 점
+
+        console.log("🔍 View Space 좌표:", {
+          x: viewSpaceX,
+          y: viewSpaceY,
+          z: viewSpaceZ,
+          note: "카메라의 view space에서 near plane 상의 점",
+        });
+
+        // View space를 world space로 변환
+        const viewSpacePoint = new THREE.Vector3(
+          viewSpaceX,
+          viewSpaceY,
+          viewSpaceZ,
+        );
+        const worldSpacePoint = viewSpacePoint.applyMatrix4(camera.matrixWorld);
+        const cameraWorldPos = camera.position.clone();
+        const rayDirection = worldSpacePoint
+          .clone()
+          .sub(cameraWorldPos)
+          .normalize();
+
+        console.log("🌍 수동 계산된 Ray:", {
+          origin: cameraWorldPos,
+          direction: rayDirection,
+          worldSpacePoint,
+          note: "수동으로 계산한 ray (카메라 위치에서 view space의 점으로)",
+        });
+      }
 
       // Oblique 투영 행렬
       const obliqueMatrix = getObliqueMatrix();
@@ -250,8 +306,19 @@ function Scene({ gridInteraction, mousePosition }: SceneProps) {
     const ndcY = -((mousePosition.y - rect.top) / rect.height) * 2 + 1;
 
     // Raycaster 생성
+    // setFromCamera는 카메라의 projection matrix를 사용하여 NDC를 world ray로 변환합니다.
+    // OrthographicCamera의 경우:
+    // 1. NDC 좌표를 카메라의 view space로 변환 (projection matrix의 역행렬 사용)
+    // 2. 카메라의 world position과 rotation을 사용하여 world space로 변환
+    // 3. Ray의 origin은 카메라의 near plane 상의 점이고, direction은 카메라에서 그 점을 향하는 방향입니다.
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
+
+    // 디버깅: Ray 정보 확인 (useFrame에서는 매 프레임 실행되므로 주석 처리하거나 조건부로만 출력)
+    // console.log("🎯 Ray (useFrame):", {
+    //   origin: raycaster.ray.origin,
+    //   direction: raycaster.ray.direction,
+    // });
 
     // Oblique 투영 행렬
     const obliqueMatrix = getObliqueMatrix();
@@ -280,30 +347,49 @@ function Scene({ gridInteraction, mousePosition }: SceneProps) {
     );
 
     // 역변환된 Ray와 원본 평면의 교점 계산
-    const originalRay = new THREE.Ray(originalRayOrigin, originalRayDirection);
-    const intersectPoint = new THREE.Vector3();
-    const intersection = originalRay.intersectPlane(plane, intersectPoint);
+    // backface culling 문제를 피하기 위해 수동으로 계산
+    const denom = originalRayDirection.dot(originalPlaneNormal);
 
-    if (intersection) {
-      // 교점은 이미 원본 좌표계에 있음
+    if (Math.abs(denom) > 1e-6) {
+      // Ray가 평면과 교차함
+      const toPlane = originalPlanePoint.clone().sub(originalRayOrigin);
+      const t = toPlane.dot(originalPlaneNormal) / denom;
 
-      // 그리드 좌표로 변환
-      const gridSize = 1;
-      const snappedX = Math.round(intersectPoint.x / gridSize) * gridSize;
-      const snappedZ = Math.round(intersectPoint.z / gridSize) * gridSize;
+      // t 값이 유효하면 교점 계산 (음수여도 Ray가 평면을 지나갈 수 있음)
+      const intersectPoint = originalRayOrigin
+        .clone()
+        .addScaledVector(originalRayDirection, t);
 
-      // 이전 좌표와 비교하여 변경된 경우에만 업데이트
-      if (
-        !lastGridCoordsRef.current ||
-        lastGridCoordsRef.current.x !== snappedX ||
-        lastGridCoordsRef.current.z !== snappedZ
-      ) {
-        lastGridCoordsRef.current = { x: snappedX, z: snappedZ };
-        onCellPointerOver(snappedX, snappedZ);
-        console.log("📍 그리드 호버:", { x: snappedX, z: snappedZ });
+      // 교점이 평면에 충분히 가까운지 확인
+      const distanceToPlane = Math.abs(
+        intersectPoint.clone().sub(originalPlanePoint).dot(originalPlaneNormal),
+      );
+
+      if (distanceToPlane < 0.1) {
+        // 교점이 평면에 가까우면 유효한 교점으로 간주
+        // 그리드 좌표로 변환 (음수 좌표도 포함)
+        const gridSize = 1;
+        const snappedX = Math.round(intersectPoint.x / gridSize) * gridSize;
+        const snappedZ = Math.round(intersectPoint.z / gridSize) * gridSize;
+
+        // 이전 좌표와 비교하여 변경된 경우에만 업데이트
+        if (
+          !lastGridCoordsRef.current ||
+          lastGridCoordsRef.current.x !== snappedX ||
+          lastGridCoordsRef.current.z !== snappedZ
+        ) {
+          lastGridCoordsRef.current = { x: snappedX, z: snappedZ };
+          onCellPointerOver(snappedX, snappedZ);
+        }
+      } else {
+        // 교점이 평면에서 너무 멀면 호버 해제
+        if (lastGridCoordsRef.current) {
+          lastGridCoordsRef.current = null;
+          onCellPointerOut();
+        }
       }
     } else {
-      // 교점이 없으면 호버 해제
+      // Ray와 평면이 평행하면 호버 해제
       if (lastGridCoordsRef.current) {
         lastGridCoordsRef.current = null;
         onCellPointerOut();
@@ -332,11 +418,10 @@ function Scene({ gridInteraction, mousePosition }: SceneProps) {
           <mesh
             position={[
               hoveredCell.x,
-              -ROOM_HEIGHT / 2 + 0.05, // 바닥보다 더 위에 배치
+              -ROOM_HEIGHT / 2 + 0.02, // 바닥보다 약간 위에 배치
               hoveredCell.z,
             ]}
             rotation={[-Math.PI / 2, 0, 0]}
-            renderOrder={1000} // 항상 위에 렌더링
           >
             <planeGeometry args={[0.95, 0.95]} />
             <meshStandardMaterial
@@ -347,8 +432,6 @@ function Scene({ gridInteraction, mousePosition }: SceneProps) {
               metalness={0.2}
               transparent
               opacity={isShiftPressed ? 1.0 : 0.7}
-              depthTest={true} // 깊이 테스트 활성화
-              depthWrite={false} // 깊이 버퍼에 쓰지 않음 (다른 객체를 가리지 않음)
             />
           </mesh>
         )}

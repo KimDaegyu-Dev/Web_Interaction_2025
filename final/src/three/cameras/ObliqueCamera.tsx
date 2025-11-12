@@ -17,7 +17,7 @@ interface ObliqueCameraProps {
  * 모든 z 값의 객체가 보이도록 far 값을 크게 설정합니다.
  */
 export function ObliqueCamera({
-  position = [1, 1, 5],
+  position = [1, 5, 5],
   zoom = 50,
   near = -10000,
   far = 10000, // 매우 큰 far 값으로 z 값 제한 제거
