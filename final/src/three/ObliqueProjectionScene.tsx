@@ -5,6 +5,7 @@ import { ObliqueCamera } from "./cameras/ObliqueCamera";
 import { Lights } from "./lights/Lights";
 import { InteractiveDisplayObjects } from "./components/DisplayObjects/InteractiveDisplayObjects";
 import { GridHighlight } from "./components/Grid/GridHighlight";
+import { EdgeZoneIndicator } from "./components/EdgeZoneIndicator";
 import { useObliqueProjection } from "./hooks/useObliqueProjection";
 import { useObliqueControls } from "./hooks/useObliqueControls";
 import { useGridInteraction } from "./hooks/useGridInteraction";
@@ -16,9 +17,17 @@ import { calculateObliqueMatrix } from "./utils/projection";
 interface SceneProps {
   gridInteraction: ReturnType<typeof useGridInteraction>;
   mousePosition: { x: number; y: number } | null;
+  controlsRef: React.MutableRefObject<{
+    getEdgeZone: () => {
+      left: boolean;
+      right: boolean;
+      top: boolean;
+      bottom: boolean;
+    };
+  } | null>;
 }
 
-function Scene({ gridInteraction, mousePosition }: SceneProps) {
+function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
   const gridHighlightGroupRef = useRef<THREE.Group>(null);
   const objectGroupRef = useRef<THREE.Group>(null);
   const { scene, camera, gl } = useThree();
@@ -29,7 +38,12 @@ function Scene({ gridInteraction, mousePosition }: SceneProps) {
   }, [scene]);
 
   // ObliqueControls 초기화 (패닝 & 줌)
-  const { getPanOffset } = useObliqueControls();
+  const { getPanOffset, getEdgeZone } = useObliqueControls();
+
+  // controlsRef 업데이트
+  useEffect(() => {
+    controlsRef.current = { getEdgeZone };
+  }, [controlsRef, getEdgeZone]);
 
   // Grid Interaction (Shift + 클릭으로 큐브 생성)
   const {
@@ -78,10 +92,10 @@ function Scene({ gridInteraction, mousePosition }: SceneProps) {
         const syntheticEvent = {
           stopPropagation: () => {},
           shiftKey: e.shiftKey,
-          point: new THREE.Vector3(gridCoords.x, -3, gridCoords.z),
+          point: new THREE.Vector3(gridCoords.x, -2, gridCoords.z),
         } as ThreeEvent<MouseEvent>;
 
-        onCellClick(syntheticEvent, gridCoords.x, gridCoords.z);
+        onCellClick(syntheticEvent, gridCoords.x, -2, gridCoords.z);
       }
     };
 
@@ -136,8 +150,18 @@ export function ObliqueProjectionScene() {
     y: number;
   } | null>(null);
 
+  // EdgeZoneIndicator를 위한 controls 참조
+  const controlsRef = useRef<{
+    getEdgeZone: () => {
+      left: boolean;
+      right: boolean;
+      top: boolean;
+      bottom: boolean;
+    };
+  } | null>(null);
+
   return (
-    <div className="h-screen w-full">
+    <div className="relative h-screen w-full">
       <Canvas
         shadows
         gl={{
@@ -157,8 +181,23 @@ export function ObliqueProjectionScene() {
         <Scene
           gridInteraction={gridInteraction}
           mousePosition={mousePosition}
+          controlsRef={controlsRef}
         />
       </Canvas>
+      {/* 가장자리 영역 표시기 */}
+      <EdgeZoneIndicator
+        getEdgeZone={() =>
+          controlsRef.current?.getEdgeZone() || {
+            left: false,
+            right: false,
+            top: false,
+            bottom: false,
+          }
+        }
+        thresholdX={300}
+        thresholdY={300}
+        mousePosition={mousePosition}
+      />
     </div>
   );
 }

@@ -9,11 +9,24 @@ export class ObliqueControls {
   zoom: number;
   panSpeed: number;
   zoomSpeed: number;
+  edgeThresholdX: number; // 좌우 threshold
+  edgeThresholdY: number; // 상하 threshold
+  edgePanSpeed: number;
+  currentMousePosition: THREE.Vector2;
+  animationFrameId: number | null;
+  edgeZone: {
+    left: boolean;
+    right: boolean;
+    top: boolean;
+    bottom: boolean;
+  };
 
   private _onMouseDown: (e: MouseEvent) => void;
   private _onMouseMove: (e: MouseEvent) => void;
   private _onMouseUp: () => void;
   private _onWheel: (e: WheelEvent) => void;
+  private _onMouseLeave: () => void;
+  private _updateLoop: () => void;
 
   constructor(camera: THREE.Camera, domElement: HTMLElement) {
     this.camera = camera;
@@ -34,17 +47,34 @@ export class ObliqueControls {
     // === 설정값 ===
     this.panSpeed = 0.01;
     this.zoomSpeed = 0.05; // 줌 민감도 (작을수록 부드러움)
+    this.edgeThresholdX = 300; // 좌우 가장자리 감지 threshold (픽셀)
+    this.edgeThresholdY = 300; // 상하 가장자리 감지 threshold (픽셀)
+    this.edgePanSpeed = 0.2; // 가장자리에서의 이동 속도
+    this.currentMousePosition = new THREE.Vector2();
+    this.animationFrameId = null;
+    this.edgeZone = {
+      left: false,
+      right: false,
+      top: false,
+      bottom: false,
+    };
 
     // === 이벤트 바인딩 ===
     this._onMouseDown = this.onMouseDown.bind(this);
     this._onMouseMove = this.onMouseMove.bind(this);
     this._onMouseUp = this.onMouseUp.bind(this);
     this._onWheel = this.onWheel.bind(this);
+    this._onMouseLeave = this.onMouseLeave.bind(this);
+    this._updateLoop = this.updateLoop.bind(this);
 
     domElement.addEventListener("mousedown", this._onMouseDown);
     domElement.addEventListener("wheel", this._onWheel);
+    domElement.addEventListener("mousemove", this._onMouseMove);
+    domElement.addEventListener("mouseleave", this._onMouseLeave);
     window.addEventListener("mouseup", this._onMouseUp);
-    window.addEventListener("mousemove", this._onMouseMove);
+
+    // 애니메이션 루프 시작
+    this.startUpdateLoop();
   }
 
   // === 마우스 다운 ===
@@ -61,16 +91,138 @@ export class ObliqueControls {
 
   // === 마우스 이동 ===
   private onMouseMove(e: MouseEvent): void {
-    if (!this.isDragging) return;
+    // 마우스 위치 업데이트
+    const rect = this.domElement.getBoundingClientRect();
+    this.currentMousePosition.set(e.clientX - rect.left, e.clientY - rect.top);
 
-    const dx = e.clientX - this.prevMouse.x;
-    const dy = e.clientY - this.prevMouse.y;
-    this.prevMouse.set(e.clientX, e.clientY);
+    // 드래그 중일 때만 드래그 이동 처리
+    if (this.isDragging) {
+      const dx = e.clientX - this.prevMouse.x;
+      const dy = e.clientY - this.prevMouse.y;
+      this.prevMouse.set(e.clientX, e.clientY);
 
-    // 드래그 → 평행 이동 (카메라는 고정, panOffset만 변경)
-    const panX = -dx * this.panSpeed;
-    const panY = dy * this.panSpeed;
-    this.panOffset.add(new THREE.Vector3(panX, panY, 0));
+      // 드래그 → 평행 이동 (카메라는 고정, panOffset만 변경)
+      const panX = -dx * this.panSpeed;
+      const panY = dy * this.panSpeed;
+      this.panOffset.add(new THREE.Vector3(panX, panY, 0));
+    }
+  }
+
+  // === 마우스가 뷰포트를 벗어남 ===
+  private onMouseLeave(): void {
+    this.currentMousePosition.set(-1, -1);
+  }
+
+  // === 가장자리 감지 및 자동 이동 (조이스틱 방식) ===
+  private updateLoop(): void {
+    if (this.isDragging) {
+      // 드래그 중일 때는 자동 이동하지 않음
+      this.animationFrameId = requestAnimationFrame(this._updateLoop);
+      return;
+    }
+
+    const rect = this.domElement.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const thresholdX = this.edgeThresholdX;
+    const thresholdY = this.edgeThresholdY;
+
+    const x = this.currentMousePosition.x;
+    const y = this.currentMousePosition.y;
+
+    // 마우스가 뷰포트 밖에 있으면 이동하지 않음
+    if (x < 0 || y < 0 || x > width || y > height) {
+      this.edgeZone = { left: false, right: false, top: false, bottom: false };
+      this.animationFrameId = requestAnimationFrame(this._updateLoop);
+      return;
+    }
+
+    // 뷰포트 중심 계산
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    // 중심에서 마우스까지의 방향 벡터 계산
+    const dx = x - centerX;
+    const dy = y - centerY;
+
+    // 가장자리 threshold 영역 감지 (액자 모양)
+    let isInEdgeZone = false;
+    let intensity = 0;
+    const edgeZone = {
+      left: false,
+      right: false,
+      top: false,
+      bottom: false,
+    };
+
+    // 왼쪽 가장자리
+    if (x < thresholdX) {
+      isInEdgeZone = true;
+      edgeZone.left = true;
+      intensity = Math.max(intensity, (thresholdX - x) / thresholdX);
+    }
+    // 오른쪽 가장자리
+    else if (x > width - thresholdX) {
+      isInEdgeZone = true;
+      edgeZone.right = true;
+      intensity = Math.max(intensity, (x - (width - thresholdX)) / thresholdX);
+    }
+
+    // 위쪽 가장자리
+    if (y < thresholdY) {
+      isInEdgeZone = true;
+      edgeZone.top = true;
+      intensity = Math.max(intensity, (thresholdY - y) / thresholdY);
+    }
+    // 아래쪽 가장자리
+    else if (y > height - thresholdY) {
+      isInEdgeZone = true;
+      edgeZone.bottom = true;
+      intensity = Math.max(intensity, (y - (height - thresholdY)) / thresholdY);
+    }
+
+    // 가장자리 영역 상태 업데이트
+    this.edgeZone = edgeZone;
+
+    // 가장자리 영역에 있지 않으면 이동하지 않음
+    if (!isInEdgeZone) {
+      this.animationFrameId = requestAnimationFrame(this._updateLoop);
+      return;
+    }
+
+    // 조이스틱처럼 중심에서 마우스 방향으로 이동
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance === 0) {
+      this.animationFrameId = requestAnimationFrame(this._updateLoop);
+      return;
+    }
+
+    // 방향 벡터 정규화
+    const directionX = dx / distance;
+    const directionY = dy / distance;
+
+    // 이동 적용 (방향 반전: 마우스가 오른쪽에 있으면 씬이 왼쪽으로 이동)
+    const speed = this.edgePanSpeed * intensity;
+    this.panOffset.add(
+      new THREE.Vector3(-directionX * speed, directionY * speed, 0),
+    );
+
+    this.animationFrameId = requestAnimationFrame(this._updateLoop);
+  }
+
+  // === 애니메이션 루프 시작 ===
+  private startUpdateLoop(): void {
+    if (this.animationFrameId === null) {
+      this.animationFrameId = requestAnimationFrame(this._updateLoop);
+    }
+  }
+
+  // === 애니메이션 루프 중지 ===
+  private stopUpdateLoop(): void {
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
   }
 
   // === 휠 줌 ===
@@ -96,6 +248,16 @@ export class ObliqueControls {
     return this.panOffset;
   }
 
+  // === 가장자리 영역 상태 가져오기 ===
+  getEdgeZone(): {
+    left: boolean;
+    right: boolean;
+    top: boolean;
+    bottom: boolean;
+  } {
+    return this.edgeZone;
+  }
+
   // === 업데이트 루프 ===
   update(): void {
     // 필요시 업데이트 로직 추가
@@ -103,9 +265,11 @@ export class ObliqueControls {
 
   // === 정리 ===
   dispose(): void {
+    this.stopUpdateLoop();
     this.domElement.removeEventListener("mousedown", this._onMouseDown);
     this.domElement.removeEventListener("wheel", this._onWheel);
+    this.domElement.removeEventListener("mousemove", this._onMouseMove);
+    this.domElement.removeEventListener("mouseleave", this._onMouseLeave);
     window.removeEventListener("mouseup", this._onMouseUp);
-    window.removeEventListener("mousemove", this._onMouseMove);
   }
 }

@@ -22,7 +22,7 @@ export function InteractiveDisplayObjects({
     <>
       {/* 기존 큐브들 */}
       <InteractiveCube
-        position={[0, 0, 0]}
+        position={[0, -2, 0]}
         color={0x6c5ce7}
         emissive={0x4a3f8f}
         rotationSpeed={[0.01, 0.01]}
@@ -30,10 +30,10 @@ export function InteractiveDisplayObjects({
         onPointerOut={onPointerOut}
         hovered={hoveredObject?.position.z === 0}
       />
-      <Pedestal position={[0, -1, 0]} />
+      <Pedestal position={[0, -3, 0]} />
 
       <InteractiveCube
-        position={[0, 0, 3]}
+        position={[0, -2, 3]}
         color={0xff6b9d}
         emissive={0xff4757}
         rotationSpeed={[-0.008, -0.008]}
@@ -41,7 +41,7 @@ export function InteractiveDisplayObjects({
         onPointerOut={onPointerOut}
         hovered={hoveredObject?.position.z === 3}
       />
-      <Pedestal position={[0, -1, 3]} />
+      <Pedestal position={[0, -3, 3]} />
 
       {/* 동적으로 생성된 큐브들 */}
       {dynamicCubes.map((cube) => (

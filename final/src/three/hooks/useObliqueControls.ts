@@ -36,8 +36,17 @@ export function useObliqueControls() {
     return panOffsetRef.current;
   };
 
+  // 가장자리 영역 상태를 반환하는 함수
+  const getEdgeZone = () => {
+    if (controlsRef.current) {
+      return controlsRef.current.getEdgeZone();
+    }
+    return { left: false, right: false, top: false, bottom: false };
+  };
+
   return {
     getPanOffset,
+    getEdgeZone,
     controls: controlsRef.current,
   };
 }
