@@ -38,8 +38,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  base: "./",
   build: {
-    outDir: "docs/week10",
+    outDir: "../docs/week10",
     assetsDir: "assets",
     sourcemap: true,
     minify: true,
