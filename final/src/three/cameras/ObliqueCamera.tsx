@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 import { OrthographicCamera } from "@react-three/drei";
-import * as THREE from "three";
 
 interface ObliqueCameraProps {
   position?: [number, number, number];
