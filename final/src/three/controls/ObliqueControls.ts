@@ -49,7 +49,7 @@ export class ObliqueControls {
     this.zoomSpeed = 0.05; // 줌 민감도 (작을수록 부드러움)
     this.edgeThresholdX = 300; // 좌우 가장자리 감지 threshold (픽셀)
     this.edgeThresholdY = 300; // 상하 가장자리 감지 threshold (픽셀)
-    this.edgePanSpeed = 0.2; // 가장자리에서의 이동 속도
+    this.edgePanSpeed = this.zoom ** 0.05; // 가장자리에서의 이동 속도
     this.currentMousePosition = new THREE.Vector2();
     this.animationFrameId = null;
     this.edgeZone = {
@@ -67,45 +67,31 @@ export class ObliqueControls {
     this._onMouseLeave = this.onMouseLeave.bind(this);
     this._updateLoop = this.updateLoop.bind(this);
 
-    domElement.addEventListener("mousedown", this._onMouseDown);
+    // mousedown, mouseup 이벤트 제거 (드래그 비활성화)
     domElement.addEventListener("wheel", this._onWheel);
     domElement.addEventListener("mousemove", this._onMouseMove);
     domElement.addEventListener("mouseleave", this._onMouseLeave);
-    window.addEventListener("mouseup", this._onMouseUp);
 
     // 애니메이션 루프 시작
     this.startUpdateLoop();
   }
 
-  // === 마우스 다운 ===
+  // === 마우스 다운 === (드래그 비활성화)
   private onMouseDown(e: MouseEvent): void {
-    e.preventDefault();
-    this.isDragging = true;
-    this.prevMouse.set(e.clientX, e.clientY);
+    // 드래그 기능 제거됨
   }
 
-  // === 마우스 업 ===
+  // === 마우스 업 === (드래그 비활성화)
   private onMouseUp(): void {
-    this.isDragging = false;
+    // 드래그 기능 제거됨
   }
 
   // === 마우스 이동 ===
   private onMouseMove(e: MouseEvent): void {
-    // 마우스 위치 업데이트
+    // 마우스 위치 업데이트 (가장자리 감지용)
     const rect = this.domElement.getBoundingClientRect();
     this.currentMousePosition.set(e.clientX - rect.left, e.clientY - rect.top);
-
-    // 드래그 중일 때만 드래그 이동 처리
-    if (this.isDragging) {
-      const dx = e.clientX - this.prevMouse.x;
-      const dy = e.clientY - this.prevMouse.y;
-      this.prevMouse.set(e.clientX, e.clientY);
-
-      // 드래그 → 평행 이동 (카메라는 고정, panOffset만 변경)
-      const panX = -dx * this.panSpeed;
-      const panY = dy * this.panSpeed;
-      this.panOffset.add(new THREE.Vector3(panX, panY, 0));
-    }
+    // 드래그 이동 기능 제거됨
   }
 
   // === 마우스가 뷰포트를 벗어남 ===
@@ -115,12 +101,6 @@ export class ObliqueControls {
 
   // === 가장자리 감지 및 자동 이동 (조이스틱 방식) ===
   private updateLoop(): void {
-    if (this.isDragging) {
-      // 드래그 중일 때는 자동 이동하지 않음
-      this.animationFrameId = requestAnimationFrame(this._updateLoop);
-      return;
-    }
-
     const rect = this.domElement.getBoundingClientRect();
     const width = rect.width;
     const height = rect.height;
@@ -232,8 +212,8 @@ export class ObliqueControls {
     const delta = e.deltaY * 0.001;
     this.zoom = THREE.MathUtils.clamp(
       this.zoom + delta * this.zoomSpeed,
-      0.01, // 카메라 zoom 100 (최대 줌인)
-      0.1, // 카메라 zoom 10 (최대 줌아웃)
+      0.01, // 카메라 zoom 0.01 (최대 줌인)
+      0.5, // 카메라 zoom 0.5 (최대 줌아웃)
     );
 
     // OrthographicCamera인 경우에만 zoom 업데이트
@@ -266,10 +246,9 @@ export class ObliqueControls {
   // === 정리 ===
   dispose(): void {
     this.stopUpdateLoop();
-    this.domElement.removeEventListener("mousedown", this._onMouseDown);
+    // mousedown, mouseup 이벤트 리스너 제거 (드래그 비활성화)
     this.domElement.removeEventListener("wheel", this._onWheel);
     this.domElement.removeEventListener("mousemove", this._onMouseMove);
     this.domElement.removeEventListener("mouseleave", this._onMouseLeave);
-    window.removeEventListener("mouseup", this._onMouseUp);
   }
 }

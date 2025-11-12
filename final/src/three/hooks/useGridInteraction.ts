@@ -49,31 +49,29 @@ export function useGridInteraction() {
     setHoveredCell(null);
   }, []);
 
-  // Shift + 클릭으로 큐브 생성 또는 제거
+  // 클릭으로 큐브 생성 또는 제거
   const onCellClick = useCallback(
     (e: ThreeEvent<MouseEvent>, x: number, y: number, z: number) => {
-      if (e.shiftKey) {
-        e.stopPropagation();
+      e.stopPropagation();
 
-        // 이미 해당 위치에 큐브가 있는지 확인
-        const existingCube = cubes.find(
-          (cube) => cube.position[0] === x && cube.position[2] === z,
+      // 이미 해당 위치에 큐브가 있는지 확인
+      const existingCube = cubes.find(
+        (cube) => cube.position[0] === x && cube.position[2] === z,
+      );
+
+      if (existingCube) {
+        // 큐브가 있으면 제거
+        setCubes((prev) =>
+          prev.filter((cube) => cube.id !== existingCube.id),
         );
-
-        if (existingCube) {
-          // 큐브가 있으면 제거
-          setCubes((prev) =>
-            prev.filter((cube) => cube.id !== existingCube.id),
-          );
-        } else {
-          // 큐브가 없으면 생성
-          const newCube: Cube = {
-            id: `cube-${Date.now()}-${Math.random()}`,
-            position: [x, y, z],
-            color: Math.random() * 0xffffff,
-          };
-          setCubes((prev) => [...prev, newCube]);
-        }
+      } else {
+        // 큐브가 없으면 생성
+        const newCube: Cube = {
+          id: `cube-${Date.now()}-${Math.random()}`,
+          position: [x, y, z],
+          color: Math.random() * 0xffffff,
+        };
+        setCubes((prev) => [...prev, newCube]);
       }
     },
     [cubes],
@@ -82,10 +80,8 @@ export function useGridInteraction() {
   // 큐브 삭제 (클릭으로)
   const onCubeClick = useCallback(
     (e: ThreeEvent<MouseEvent>, cubeId: string) => {
-      if (e.shiftKey) {
-        e.stopPropagation();
-        setCubes((prev) => prev.filter((cube) => cube.id !== cubeId));
-      }
+      e.stopPropagation();
+      setCubes((prev) => prev.filter((cube) => cube.id !== cubeId));
     },
     [],
   );
