@@ -13,6 +13,7 @@ import { useProjectionControls } from "./hooks/useProjectionControls";
 import { useGridRaycasting } from "./hooks/useGridRaycasting";
 import { screenToGridCoords } from "./utils/raycasting";
 import { calculateObliqueMatrix } from "./utils/projection";
+import { CubeModal } from "@/components/CubeModal";
 
 interface SceneProps {
   gridInteraction: ReturnType<typeof useGridInteraction>;
@@ -145,10 +146,22 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
 
 export function ObliqueProjectionScene() {
   const gridInteraction = useGridInteraction();
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  
+  // 초기 마우스 위치를 화면 중앙으로 설정
   const [mousePosition, setMousePosition] = useState<{
     x: number;
     y: number;
-  } | null>(null);
+  } | null>(() => {
+    // 초기값을 화면 중앙으로 설정
+    if (typeof window !== "undefined") {
+      return {
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      };
+    }
+    return null;
+  });
 
   // EdgeZoneIndicator를 위한 controls 참조
   const controlsRef = useRef<{
@@ -160,8 +173,36 @@ export function ObliqueProjectionScene() {
     };
   } | null>(null);
 
+  // Canvas 마운트 후 마우스 위치를 중앙으로 설정
+  useEffect(() => {
+    const updateCenterPosition = () => {
+      if (canvasContainerRef.current) {
+        const rect = canvasContainerRef.current.getBoundingClientRect();
+        setMousePosition({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        });
+      } else {
+        // Canvas가 아직 마운트되지 않았으면 화면 중앙 사용
+        setMousePosition({
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+        });
+      }
+    };
+
+    // 초기 설정
+    updateCenterPosition();
+
+    // 리사이즈 시에도 중앙 유지
+    window.addEventListener("resize", updateCenterPosition);
+    return () => {
+      window.removeEventListener("resize", updateCenterPosition);
+    };
+  }, []);
+
   return (
-    <div className="relative h-screen w-full">
+    <div ref={canvasContainerRef} className="relative h-screen w-full">
       <Canvas
         shadows
         gl={{
@@ -171,7 +212,14 @@ export function ObliqueProjectionScene() {
           setMousePosition({ x: e.clientX, y: e.clientY });
         }}
         onPointerLeave={() => {
-          setMousePosition(null);
+          // 포인터가 나가도 중앙 위치 유지
+          if (canvasContainerRef.current) {
+            const rect = canvasContainerRef.current.getBoundingClientRect();
+            setMousePosition({
+              x: rect.left + rect.width / 2,
+              y: rect.top + rect.height / 2,
+            });
+          }
           gridInteraction.onCellPointerOut();
         }}
         onPointerMissed={() => {
@@ -198,6 +246,17 @@ export function ObliqueProjectionScene() {
         thresholdY={300}
         mousePosition={mousePosition}
       />
+      {/* 큐브 모달 */}
+      {gridInteraction.modalMode && (
+        <CubeModal
+          isOpen={!!gridInteraction.modalMode}
+          onClose={gridInteraction.handleModalClose}
+          onSubmit={gridInteraction.handleModalSubmit}
+          mode={gridInteraction.modalMode}
+          cube={gridInteraction.selectedCube || undefined}
+          error={gridInteraction.error}
+        />
+      )}
     </div>
   );
 }

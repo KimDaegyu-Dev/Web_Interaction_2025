@@ -1,14 +1,12 @@
 import { ThreeEvent } from "@react-three/fiber";
 import { InteractiveCube } from "./InteractiveCube";
 import { Pedestal } from "./Pedestal";
+import { CubeTooltip } from "./CubeTooltip";
 import { useHoverInteraction } from "../../hooks/useHoverInteraction";
+import type { Cube } from "../../hooks/useGridInteraction";
 
 interface InteractiveDisplayObjectsProps {
-  dynamicCubes?: Array<{
-    id: string;
-    position: [number, number, number];
-    color: number;
-  }>;
+  dynamicCubes?: Cube[];
   onCubeClick?: (e: ThreeEvent<MouseEvent>, cubeId: string) => void;
 }
 
@@ -44,30 +42,44 @@ export function InteractiveDisplayObjects({
       <Pedestal position={[0, -3, 3]} />
 
       {/* 동적으로 생성된 큐브들 */}
-      {dynamicCubes.map((cube) => (
-        <group key={cube.id}>
-          <InteractiveCube
-            position={cube.position}
-            color={cube.color}
-            emissive={cube.color}
-            rotationSpeed={[0.005, 0.005]}
-            onPointerOver={onPointerOver}
-            onPointerOut={onPointerOut}
-            hovered={
-              hoveredObject?.position.x === cube.position[0] &&
-              hoveredObject?.position.z === cube.position[2]
-            }
-            onClick={(e) => onCubeClick && onCubeClick(e, cube.id)}
-          />
-          <Pedestal
-            position={[
-              cube.position[0],
-              cube.position[1] - 1,
-              cube.position[2],
-            ]}
-          />
-        </group>
-      ))}
+      {dynamicCubes.map((cube) => {
+        const isHovered =
+          hoveredObject?.position.x === cube.position[0] &&
+          hoveredObject?.position.z === cube.position[2];
+
+        return (
+          <group key={cube.id}>
+            <InteractiveCube
+              position={cube.position}
+              color={cube.color}
+              emissive={cube.color}
+              rotationSpeed={[0.005, 0.005]}
+              onPointerOver={onPointerOver}
+              onPointerOut={onPointerOut}
+              hovered={isHovered}
+              onClick={(e) => onCubeClick && onCubeClick(e, cube.id)}
+            />
+            <Pedestal
+              position={[
+                cube.position[0],
+                cube.position[1] - 1,
+                cube.position[2],
+              ]}
+            />
+            {/* 호버 시 제목과 작성자 표시 */}
+            {isHovered && (
+              <CubeTooltip
+                cube={cube}
+                position={[
+                  cube.position[0],
+                  cube.position[1] + 1,
+                  cube.position[2],
+                ]}
+              />
+            )}
+          </group>
+        );
+      })}
     </>
   );
 }
