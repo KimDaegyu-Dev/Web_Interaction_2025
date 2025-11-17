@@ -30,6 +30,7 @@ export default tseslint.config(
     rules: {
       ...pluginReact.configs.recommended.rules,
       ...pluginReactHooks.configs.recommended.rules,
+      "react/no-unknown-property": ["off", { ignore: ["TSX"] }],
       "react/react-in-jsx-scope": "off",
       "react-hooks/exhaustive-deps": "off",
     },
