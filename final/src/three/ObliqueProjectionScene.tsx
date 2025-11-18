@@ -6,6 +6,7 @@ import { Lights } from "./lights/Lights";
 import { InteractiveDisplayObjects } from "./components/DisplayObjects/InteractiveDisplayObjects";
 import { GridHighlight } from "./components/Grid/GridHighlight";
 import { EdgeZoneIndicator } from "./components/EdgeZoneIndicator";
+import { Terrain } from "./components/Terrain";
 import { useObliqueProjection } from "./hooks/useObliqueProjection";
 import { useObliqueControls } from "./hooks/useObliqueControls";
 import { useGridInteraction } from "./hooks/useGridInteraction";
@@ -31,6 +32,7 @@ interface SceneProps {
 function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
   const gridHighlightGroupRef = useRef<THREE.Group>(null);
   const objectGroupRef = useRef<THREE.Group>(null);
+  const terrainGroupRef = useRef<THREE.Group>(null);
   const { scene, camera, gl } = useThree();
 
   // 배경색 설정
@@ -109,6 +111,7 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
   // Oblique 투영 적용
   useObliqueProjection(gridHighlightGroupRef, projectionParams, getPanOffset);
   useObliqueProjection(objectGroupRef, projectionParams, getPanOffset);
+  useObliqueProjection(terrainGroupRef, projectionParams, getPanOffset);
 
   // AxesHelper 추가
   useEffect(() => {
@@ -124,6 +127,11 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
     <>
       <ObliqueCamera />
       <Lights />
+
+      {/* 지형 - Oblique 투영 적용 */}
+      <group ref={terrainGroupRef}>
+        <Terrain size={200} segments={100} />
+      </group>
 
       {/* 그리드 강조 메시 */}
       <group ref={gridHighlightGroupRef}>
@@ -147,7 +155,7 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
 export function ObliqueProjectionScene() {
   const gridInteraction = useGridInteraction();
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  
+
   // 초기 마우스 위치를 화면 중앙으로 설정
   const [mousePosition, setMousePosition] = useState<{
     x: number;
