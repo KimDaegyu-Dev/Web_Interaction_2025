@@ -13,6 +13,7 @@ import { useProjectionControls } from "./hooks/useProjectionControls";
 import { useGridRaycasting } from "./hooks/useGridRaycasting";
 import { screenToGridCoords } from "./utils/raycasting";
 import { calculateObliqueMatrix } from "./utils/projection";
+import { Terrain } from "./components/Terrain/Terrain";
 import { CubeModal } from "@/components/CubeModal";
 
 interface SceneProps {
@@ -31,6 +32,7 @@ interface SceneProps {
 function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
   const gridHighlightGroupRef = useRef<THREE.Group>(null);
   const objectGroupRef = useRef<THREE.Group>(null);
+  const terrainGroupRef = useRef<THREE.Group>(null);
   const { scene, camera, gl } = useThree();
 
   // 배경색 설정
@@ -109,6 +111,7 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
   // Oblique 투영 적용
   useObliqueProjection(gridHighlightGroupRef, projectionParams, getPanOffset);
   useObliqueProjection(objectGroupRef, projectionParams, getPanOffset);
+  useObliqueProjection(terrainGroupRef, projectionParams, getPanOffset);
 
   // AxesHelper 추가
   useEffect(() => {
@@ -124,6 +127,11 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
     <>
       <ObliqueCamera />
       <Lights />
+
+      {/* Terrain with heightmap displacement */}
+      <group ref={terrainGroupRef}>
+        <Terrain />
+      </group>
 
       {/* 그리드 강조 메시 */}
       <group ref={gridHighlightGroupRef}>
@@ -147,7 +155,7 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
 export function ObliqueProjectionScene() {
   const gridInteraction = useGridInteraction();
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  
+
   // 초기 마우스 위치를 화면 중앙으로 설정
   const [mousePosition, setMousePosition] = useState<{
     x: number;
