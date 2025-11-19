@@ -4,15 +4,19 @@ import { Pedestal } from "./Pedestal";
 import { CubeTooltip } from "./CubeTooltip";
 import { useHoverInteraction } from "../../hooks/useHoverInteraction";
 import type { Cube } from "../../hooks/useGridInteraction";
+import { LSystemPlantObject } from "../LSystemPlant";
+import type { LSystemPlant } from "../../hooks/useLSystemPlants";
 
 interface InteractiveDisplayObjectsProps {
   dynamicCubes?: Cube[];
   onCubeClick?: (e: ThreeEvent<MouseEvent>, cubeId: string) => void;
+  plants?: LSystemPlant[];
 }
 
 export function InteractiveDisplayObjects({
   dynamicCubes = [],
   onCubeClick,
+  plants = [],
 }: InteractiveDisplayObjectsProps) {
   const { hoveredObject, onPointerOver, onPointerOut } = useHoverInteraction();
 
@@ -80,6 +84,11 @@ export function InteractiveDisplayObjects({
           </group>
         );
       })}
+
+      {/* L-System 식물 */}
+      {plants.map((plant) => (
+        <LSystemPlantObject key={plant.id} plant={plant} />
+      ))}
     </>
   );
 }
