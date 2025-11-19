@@ -115,14 +115,14 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
   useObliqueProjection(objectGroupRef, projectionParams, getPanOffset);
 
   // AxesHelper 추가
-  useEffect(() => {
-    const axesHelper = new THREE.AxesHelper(2);
-    scene.add(axesHelper);
-    return () => {
-      scene.remove(axesHelper);
-      axesHelper.dispose();
-    };
-  }, [scene]);
+  // useEffect(() => {
+  //   const axesHelper = new THREE.AxesHelper(2);
+  //   scene.add(axesHelper);
+  //   return () => {
+  //     scene.remove(axesHelper);
+  //     axesHelper.dispose();
+  //   };
+  // }, [scene]);
 
   return (
     <>
@@ -164,7 +164,7 @@ export function ObliqueProjectionScene() {
     handleModalClose,
   } = gridInteraction;
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  
+
   // 초기 마우스 위치를 화면 중앙으로 설정
   const [mousePosition, setMousePosition] = useState<{
     x: number;

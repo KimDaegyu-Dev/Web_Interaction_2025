@@ -31,7 +31,7 @@ export function Router() {
       <ReactRouter>
         <Routes>
           <Route element={<ObliqueProjectionPage />} path="/"></Route>
-          <Route element={<TestPage />} path="/test"></Route>
+          <Route element={<ObliqueProjectionPage />} path="/debug"></Route>
         </Routes>
       </ReactRouter>
       {/* TanStack Query Devtools: #debug가 있을 때만 렌더링 */}
