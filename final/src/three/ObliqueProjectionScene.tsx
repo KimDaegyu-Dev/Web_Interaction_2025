@@ -49,12 +49,16 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
   // Grid Interaction (Shift + 클릭으로 큐브 생성)
   const {
     hoveredCell,
-    cubes,
+    objects,
     isShiftPressed,
+    hoveredObjectId,
     onCellPointerOver,
     onCellPointerOut,
     onCellClick,
-    onCubeClick,
+    onObjectClick,
+    onObjectPointerOver,
+    onObjectPointerOut,
+    setObjectState,
   } = gridInteraction;
 
   // 투영 파라미터 컨트롤
@@ -136,8 +140,14 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
       {/* 오브젝트들 - Oblique 투영 적용 */}
       <group ref={objectGroupRef}>
         <InteractiveDisplayObjects
-          dynamicCubes={cubes}
-          onCubeClick={onCubeClick}
+          objects={objects}
+          hoveredObjectId={hoveredObjectId}
+          onObjectClick={onObjectClick}
+          onObjectPointerOver={onObjectPointerOver}
+          onObjectPointerOut={onObjectPointerOut}
+          onRequestStateChange={(id, nextState) =>
+            setObjectState(id, nextState)
+          }
         />
       </group>
     </>
@@ -146,6 +156,13 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
 
 export function ObliqueProjectionScene() {
   const gridInteraction = useGridInteraction();
+  const {
+    modalMode: cubeModalMode,
+    selectedCube,
+    error,
+    handleModalSubmit,
+    handleModalClose,
+  } = gridInteraction;
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   
   // 초기 마우스 위치를 화면 중앙으로 설정
@@ -246,15 +263,14 @@ export function ObliqueProjectionScene() {
         thresholdY={300}
         mousePosition={mousePosition}
       />
-      {/* 큐브 모달 */}
-      {gridInteraction.modalMode && (
+      {cubeModalMode && (
         <CubeModal
-          isOpen={!!gridInteraction.modalMode}
-          onClose={gridInteraction.handleModalClose}
-          onSubmit={gridInteraction.handleModalSubmit}
-          mode={gridInteraction.modalMode}
-          cube={gridInteraction.selectedCube || undefined}
-          error={gridInteraction.error}
+          isOpen={!!cubeModalMode}
+          onClose={handleModalClose}
+          onSubmit={handleModalSubmit}
+          mode={cubeModalMode}
+          cube={selectedCube || undefined}
+          error={error}
         />
       )}
     </div>

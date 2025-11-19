@@ -7,9 +7,10 @@ interface CubeTooltipProps {
 }
 
 export function CubeTooltip({ cube, position }: CubeTooltipProps) {
-  if (!cube.title && !cube.author) {
-    return null;
-  }
+  const title = cube.metadata?.title ?? (cube as any).title;
+  const author = cube.metadata?.author ?? (cube as any).author;
+
+  if (!title && !author) return null;
 
   return (
     <group position={position} rotation={[0, Math.PI / 4, 0]}>
@@ -24,7 +25,7 @@ export function CubeTooltip({ cube, position }: CubeTooltipProps) {
         />
       </mesh>
       {/* 제목 */}
-      {cube.title && (
+      {title && (
         <Text
           position={[0, 0.15, 0.01]}
           fontSize={0.15}
@@ -34,11 +35,11 @@ export function CubeTooltip({ cube, position }: CubeTooltipProps) {
           maxWidth={1.8}
           textAlign="center"
         >
-          {cube.title}
+          {title}
         </Text>
       )}
       {/* 작성자 */}
-      {cube.author && (
+      {author && (
         <Text
           position={[0, -0.1, 0.01]}
           fontSize={0.1}
@@ -48,7 +49,7 @@ export function CubeTooltip({ cube, position }: CubeTooltipProps) {
           maxWidth={1.8}
           textAlign="center"
         >
-          {cube.author}
+          {author}
         </Text>
       )}
     </group>

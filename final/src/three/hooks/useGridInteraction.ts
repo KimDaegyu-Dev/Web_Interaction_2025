@@ -1,5 +1,10 @@
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ThreeEvent } from "@react-three/fiber";
+import {
+  usePlacedObjects,
+  type SceneObjectInstance,
+} from "./usePlacedObjects";
+import type { ObjectStateKey } from "../objectSystem/modelLibrary";
 import { useCubes } from "./useCubes";
 
 interface GridCell {
@@ -7,15 +12,8 @@ interface GridCell {
   z: number;
 }
 
-export interface Cube {
-  id: string;
-  position: [number, number, number];
-  color: number;
-  title?: string | null;
-  author?: string | null;
-  message1?: string | null;
-  message2?: string | null;
-}
+export type PlacedObject = SceneObjectInstance;
+export type Cube = SceneObjectInstance;
 
 type ModalMode = "create" | "edit" | "delete" | null;
 
@@ -27,6 +25,7 @@ interface PendingAction {
 
 export function useGridInteraction() {
   const [hoveredCell, setHoveredCell] = useState<GridCell | null>(null);
+  const [hoveredObjectId, setHoveredObjectId] = useState<string | null>(null);
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(
@@ -34,10 +33,46 @@ export function useGridInteraction() {
   );
   const [selectedCube, setSelectedCube] = useState<Cube | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { cubes, isLoading, createCube, deleteCube, updateCube, clearCubes } =
-    useCubes();
 
-  // Shift 키 상태 추적
+  const {
+    objects,
+    setObjectState,
+    restoreRestState,
+    setAllObjectsState,
+    syncFromExternal,
+  } = usePlacedObjects();
+
+  const {
+    cubes: remoteCubes,
+    isLoading,
+    createCube,
+    deleteCube,
+    updateCube,
+    clearCubes,
+  } = useCubes();
+
+  // Sync Supabase cubes into renderable glTF objects (keeps state if same id remains)
+  useEffect(() => {
+    const entries = remoteCubes.map((cube) => ({
+      id: cube.id,
+      position: cube.position,
+      title: cube.title,
+      author: cube.author,
+      message1: cube.message1,
+      message2: cube.message2,
+    }));
+    syncFromExternal(entries);
+  }, [remoteCubes, syncFromExternal]);
+
+  const objectsByCell = useMemo(
+    () =>
+      new Map(
+        objects.map((obj) => [`${obj.position[0]}_${obj.position[2]}`, obj]),
+      ),
+    [objects],
+  );
+
+  // Shift 키 상태 추적 (프롬프트에서 요구한 입력 유지)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Shift") {
@@ -69,50 +104,71 @@ export function useGridInteraction() {
     setHoveredCell(null);
   }, []);
 
-  // 클릭으로 큐브 생성 또는 제거
+  // 그리드 클릭 시 새로운 오브젝트를 배치
   const onCellClick = useCallback(
     (e: ThreeEvent<MouseEvent>, x: number, y: number, z: number) => {
       e.stopPropagation();
+      const key = `${x}_${z}`;
+      const existing = objectsByCell.get(key);
 
-      // 이미 해당 위치에 큐브가 있는지 확인
-      const existingCube = cubes.find(
-        (cube) => cube.position[0] === x && cube.position[2] === z,
-      );
-
-      if (existingCube) {
-        // 큐브가 있으면 삭제 모달 열기
-        setSelectedCube(existingCube);
-        setPendingAction({ mode: "delete", cubeId: existingCube.id });
+      if (existing) {
+        setSelectedCube(existing);
+        setPendingAction({ mode: "delete", cubeId: existing.id });
         setModalMode("delete");
         setError(null);
       } else {
-        // 큐브가 없으면 생성 모달 열기
         setSelectedCube(null);
         setPendingAction({ mode: "create", position: [x, y, z] });
         setModalMode("create");
         setError(null);
       }
     },
-    [cubes],
+    [objectsByCell],
   );
 
-  // 큐브 클릭 (수정 모달 열기)
-  const onCubeClick = useCallback(
-    (e: ThreeEvent<MouseEvent>, cubeId: string) => {
+  const onObjectClick = useCallback(
+    (e: ThreeEvent<MouseEvent>, objectId: string) => {
       e.stopPropagation();
-
-      const cube = cubes.find((c) => c.id === cubeId);
-      if (cube) {
-        setSelectedCube(cube);
-        setPendingAction({ mode: "edit", cubeId });
+      const matchingObject = objects.find((o) => o.id === objectId);
+      if (matchingObject) {
+        setSelectedCube(matchingObject);
+        setPendingAction({ mode: "edit", cubeId: objectId });
         setModalMode("edit");
         setError(null);
+        return;
       }
+
+      // fallback: play bloom animation if not synced yet
+      setObjectState(objectId, "bloom");
     },
-    [cubes],
+    [objects, setObjectState],
   );
 
-  // 모달 제출 핸들러
+  const onObjectPointerOver = useCallback(
+    (e: ThreeEvent<PointerEvent>, objectId: string) => {
+      e.stopPropagation();
+      setHoveredObjectId(objectId);
+      setObjectState(objectId, "hover", { setAsRestState: false });
+    },
+    [setObjectState],
+  );
+
+  const onObjectPointerOut = useCallback(
+    (e: ThreeEvent<PointerEvent>, objectId: string) => {
+      e.stopPropagation();
+      setHoveredObjectId((prev) => (prev === objectId ? null : prev));
+      restoreRestState(objectId);
+    },
+    [restoreRestState],
+  );
+
+  const setGlobalState = useCallback(
+    (state: ObjectStateKey) => {
+      setAllObjectsState(state, { setAsRestState: state !== "hover" });
+    },
+    [setAllObjectsState],
+  );
+
   const handleModalSubmit = useCallback(
     async (data: {
       password: string;
@@ -161,11 +217,11 @@ export function useGridInteraction() {
           setModalMode(null);
           setPendingAction(null);
         }
-      } catch (error) {
-        console.error("Error:", error);
+      } catch (err) {
+        console.error("Error:", err);
         const errorMessage =
-          error instanceof Error
-            ? error.message
+          err instanceof Error
+            ? err.message
             : "작업 중 오류가 발생했습니다. 패스워드를 확인해주세요.";
         setError(errorMessage);
       }
@@ -182,18 +238,23 @@ export function useGridInteraction() {
 
   return {
     hoveredCell,
-    cubes,
     isShiftPressed,
-    isLoading,
+    hoveredObjectId,
+    objects,
     modalMode,
     selectedCube,
     error,
+    isLoading,
     onCellPointerOver,
     onCellPointerOut,
     onCellClick,
-    onCubeClick,
-    clearCubes,
+    onObjectClick,
+    onObjectPointerOver,
+    onObjectPointerOut,
+    setGlobalState,
+    setObjectState,
     handleModalSubmit,
     handleModalClose,
+    clearCubes,
   };
 }

@@ -1,79 +1,56 @@
 import { ThreeEvent } from "@react-three/fiber";
-import { InteractiveCube } from "./InteractiveCube";
-import { Pedestal } from "./Pedestal";
 import { CubeTooltip } from "./CubeTooltip";
-import { useHoverInteraction } from "../../hooks/useHoverInteraction";
-import type { Cube } from "../../hooks/useGridInteraction";
+import type { PlacedObject } from "../../hooks/useGridInteraction";
+import { StatefulModelInstance } from "../../objectSystem/StatefulModelInstance";
+import { getModelDefinition } from "../../objectSystem/modelLibrary";
+import type { ObjectStateKey } from "../../objectSystem/modelLibrary";
 
 interface InteractiveDisplayObjectsProps {
-  dynamicCubes?: Cube[];
-  onCubeClick?: (e: ThreeEvent<MouseEvent>, cubeId: string) => void;
+  objects?: PlacedObject[];
+  hoveredObjectId?: string | null;
+  onObjectClick?: (e: ThreeEvent<MouseEvent>, cubeId: string) => void;
+  onObjectPointerOver?: (e: ThreeEvent<PointerEvent>, cubeId: string) => void;
+  onObjectPointerOut?: (e: ThreeEvent<PointerEvent>, cubeId: string) => void;
+  onRequestStateChange?: (id: string, nextState: ObjectStateKey) => void;
 }
 
 export function InteractiveDisplayObjects({
-  dynamicCubes = [],
-  onCubeClick,
+  objects = [],
+  hoveredObjectId,
+  onObjectClick,
+  onObjectPointerOver,
+  onObjectPointerOut,
+  onRequestStateChange,
 }: InteractiveDisplayObjectsProps) {
-  const { hoveredObject, onPointerOver, onPointerOut } = useHoverInteraction();
-
   return (
     <>
-      {/* 기존 큐브들 */}
-      <InteractiveCube
-        position={[0, -2, 0]}
-        color={0x6c5ce7}
-        emissive={0x4a3f8f}
-        rotationSpeed={[0.01, 0.01]}
-        onPointerOver={onPointerOver}
-        onPointerOut={onPointerOut}
-        hovered={hoveredObject?.position.z === 0}
-      />
-      <Pedestal position={[0, -3, 0]} />
+      {objects.map((object) => {
+        const definition = getModelDefinition(object.modelKey);
 
-      <InteractiveCube
-        position={[0, -2, 3]}
-        color={0xff6b9d}
-        emissive={0xff4757}
-        rotationSpeed={[-0.008, -0.008]}
-        onPointerOver={onPointerOver}
-        onPointerOut={onPointerOut}
-        hovered={hoveredObject?.position.z === 3}
-      />
-      <Pedestal position={[0, -3, 3]} />
+        if (!definition) {
+          return null;
+        }
 
-      {/* 동적으로 생성된 큐브들 */}
-      {dynamicCubes.map((cube) => {
-        const isHovered =
-          hoveredObject?.position.x === cube.position[0] &&
-          hoveredObject?.position.z === cube.position[2];
+        const isHovered = hoveredObjectId === object.id;
 
         return (
-          <group key={cube.id}>
-            <InteractiveCube
-              position={cube.position}
-              color={cube.color}
-              emissive={cube.color}
-              rotationSpeed={[0.005, 0.005]}
-              onPointerOver={onPointerOver}
-              onPointerOut={onPointerOut}
+          <group key={object.id}>
+            <StatefulModelInstance
+              instance={object}
+              definition={definition}
               hovered={isHovered}
-              onClick={(e) => onCubeClick && onCubeClick(e, cube.id)}
+              onPointerOver={onObjectPointerOver}
+              onPointerOut={onObjectPointerOut}
+              onClick={(e) => onObjectClick?.(e, object.id)}
+              onRequestStateChange={onRequestStateChange}
             />
-            <Pedestal
-              position={[
-                cube.position[0],
-                cube.position[1] - 1,
-                cube.position[2],
-              ]}
-            />
-            {/* 호버 시 제목과 작성자 표시 */}
             {isHovered && (
               <CubeTooltip
-                cube={cube}
+                cube={object}
                 position={[
-                  cube.position[0],
-                  cube.position[1] + 1,
-                  cube.position[2],
+                  object.position[0],
+                  object.position[1] + 3,
+                  object.position[2],
                 ]}
               />
             )}
