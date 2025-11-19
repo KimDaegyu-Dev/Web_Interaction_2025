@@ -34,7 +34,7 @@ export interface ModelDefinition {
 export const modelLibrary: ModelDefinition[] = [
   {
     key: "flower_basic",
-    url: import.meta.env.DEV ? "models/flower.glb" : "week12/models/flower.glb",
+    url: import.meta.env.DEV ? "models/flower.glb" : "models/flower.glb",
     defaultScale: [1.4, 1.4, 1.4],
     defaultRotation: [0, Math.PI / 4, 0],
     defaultState: "idle",
