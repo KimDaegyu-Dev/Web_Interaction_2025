@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import type { Cube } from "@/three/hooks/useGridInteraction";
+import type { PlacedObject } from "@/three/hooks/useGridInteraction";
 
-interface CubeModalProps {
+interface BuildingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: {
@@ -12,18 +12,18 @@ interface CubeModalProps {
     message2?: string;
   }) => void;
   mode: "create" | "edit" | "delete";
-  cube?: Cube;
+  building?: PlacedObject;
   error?: string | null;
 }
 
-export function CubeModal({
+export function BuildingModal({
   isOpen,
   onClose,
   onSubmit,
   mode,
-  cube,
+  building,
   error,
-}: CubeModalProps) {
+}: BuildingModalProps) {
   const [password, setPassword] = useState("");
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
@@ -32,11 +32,11 @@ export function CubeModal({
 
   useEffect(() => {
     if (isOpen) {
-      if (mode === "edit" && cube) {
-        setTitle(cube.title || "");
-        setAuthor(cube.author || "");
-        setMessage1(cube.message1 || "");
-        setMessage2(cube.message2 || "");
+      if (mode === "edit" && building) {
+        setTitle(building.title || "");
+        setAuthor(building.author || "");
+        setMessage1(building.message1 || "");
+        setMessage2(building.message2 || "");
       } else {
         setTitle("");
         setAuthor("");
@@ -45,7 +45,7 @@ export function CubeModal({
       }
       setPassword("");
     }
-  }, [isOpen, mode, cube]);
+  }, [isOpen, mode, building]);
 
   if (!isOpen) return null;
 
@@ -66,10 +66,10 @@ export function CubeModal({
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-bold">
             {mode === "create"
-              ? "큐브 생성"
+              ? "건물 생성"
               : mode === "edit"
-                ? "큐브 수정"
-                : "큐브 삭제"}
+                ? "건물 수정"
+                : "건물 삭제"}
           </h2>
           <button
             onClick={onClose}

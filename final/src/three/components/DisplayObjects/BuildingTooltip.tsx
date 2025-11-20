@@ -1,14 +1,14 @@
 import { Text } from "@react-three/drei";
-import type { Cube } from "../../hooks/useGridInteraction";
+import type { PlacedObject } from "../../hooks/useGridInteraction";
 
-interface CubeTooltipProps {
-  cube: Cube;
+interface BuildingTooltipProps {
+  building: PlacedObject;
   position: [number, number, number];
 }
 
-export function CubeTooltip({ cube, position }: CubeTooltipProps) {
-  const title = cube.metadata?.title ?? (cube as any).title;
-  const author = cube.metadata?.author ?? (cube as any).author;
+export function BuildingTooltip({ building, position }: BuildingTooltipProps) {
+  const title = building.metadata?.title ?? building.title;
+  const author = building.metadata?.author ?? building.author;
 
   if (!title && !author) return null;
 

@@ -1,5 +1,5 @@
 import { ThreeEvent } from "@react-three/fiber";
-import { CubeTooltip } from "./CubeTooltip";
+import { BuildingTooltip } from "./BuildingTooltip";
 import type { PlacedObject } from "../../hooks/useGridInteraction";
 import { StatefulModelInstance } from "../../objectSystem/StatefulModelInstance";
 import { getModelDefinition } from "../../objectSystem/modelLibrary";
@@ -8,9 +8,9 @@ import type { ObjectStateKey } from "../../objectSystem/modelLibrary";
 interface InteractiveDisplayObjectsProps {
   objects?: PlacedObject[];
   hoveredObjectId?: string | null;
-  onObjectClick?: (e: ThreeEvent<MouseEvent>, cubeId: string) => void;
-  onObjectPointerOver?: (e: ThreeEvent<PointerEvent>, cubeId: string) => void;
-  onObjectPointerOut?: (e: ThreeEvent<PointerEvent>, cubeId: string) => void;
+  onObjectClick?: (e: ThreeEvent<MouseEvent>, buildingId: string) => void;
+  onObjectPointerOver?: (e: ThreeEvent<PointerEvent>, buildingId: string) => void;
+  onObjectPointerOut?: (e: ThreeEvent<PointerEvent>, buildingId: string) => void;
   onRequestStateChange?: (id: string, nextState: ObjectStateKey) => void;
 }
 
@@ -45,8 +45,8 @@ export function InteractiveDisplayObjects({
               onRequestStateChange={onRequestStateChange}
             />
             {isHovered && (
-              <CubeTooltip
-                cube={object}
+              <BuildingTooltip
+                building={object}
                 position={[
                   object.position[0],
                   object.position[1] + 3,

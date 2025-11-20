@@ -5,7 +5,8 @@ import {
   type SceneObjectInstance,
 } from "./usePlacedObjects";
 import type { ObjectStateKey } from "../objectSystem/modelLibrary";
-import { useCubes } from "./useCubes";
+import { useBuildingPersistence } from "./useBuildingPersistence";
+
 
 interface GridCell {
   x: number;
@@ -13,14 +14,13 @@ interface GridCell {
 }
 
 export type PlacedObject = SceneObjectInstance;
-export type Cube = SceneObjectInstance;
 
 type ModalMode = "create" | "edit" | "delete" | null;
 
 interface PendingAction {
   mode: "create" | "edit" | "delete";
   position?: [number, number, number];
-  cubeId?: string;
+  buildingId?: string;
 }
 
 export function useGridInteraction() {
@@ -30,11 +30,14 @@ export function useGridInteraction() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(
     null,
   );
-  const [selectedCube, setSelectedCube] = useState<Cube | null>(null);
+  const [selectedBuilding, setSelectedBuilding] = useState<PlacedObject | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const {
     objects,
+    placeObject,
+    deleteObject,
+    updateObject,
     setObjectState,
     restoreRestState,
     setAllObjectsState,
@@ -42,26 +45,25 @@ export function useGridInteraction() {
   } = usePlacedObjects();
 
   const {
-    cubes: remoteCubes,
+    buildings: remoteBuildings,
     isLoading,
-    createCube,
-    deleteCube,
-    updateCube,
-    clearCubes,
-  } = useCubes();
+    createBuilding,
+    deleteBuilding,
+    updateBuilding,
+  } = useBuildingPersistence();
 
-  // Sync Supabase cubes into renderable glTF objects (keeps state if same id remains)
+  // Sync Supabase buildings into renderable glTF objects
   useEffect(() => {
-    const entries = remoteCubes.map((cube) => ({
-      id: cube.id,
-      position: cube.position,
-      title: cube.title,
-      author: cube.author,
-      message1: cube.message1,
-      message2: cube.message2,
+    const entries = remoteBuildings.map((building) => ({
+      id: building.id,
+      position: building.position,
+      title: building.title,
+      author: building.author,
+      message1: building.message1,
+      message2: building.message2,
     }));
     syncFromExternal(entries);
-  }, [remoteCubes, syncFromExternal]);
+  }, [remoteBuildings, syncFromExternal]);
 
   const objectsByCell = useMemo(
     () =>
@@ -88,12 +90,12 @@ export function useGridInteraction() {
       const existing = objectsByCell.get(key);
 
       if (existing) {
-        setSelectedCube(existing);
-        setPendingAction({ mode: "delete", cubeId: existing.id });
+        setSelectedBuilding(existing);
+        setPendingAction({ mode: "delete", buildingId: existing.id });
         setModalMode("delete");
         setError(null);
       } else {
-        setSelectedCube(null);
+        setSelectedBuilding(null);
         setPendingAction({ mode: "create", position: [x, y, z] });
         setModalMode("create");
         setError(null);
@@ -107,8 +109,8 @@ export function useGridInteraction() {
       e.stopPropagation();
       const matchingObject = objects.find((o) => o.id === objectId);
       if (matchingObject) {
-        setSelectedCube(matchingObject);
-        setPendingAction({ mode: "edit", cubeId: objectId });
+        setSelectedBuilding(matchingObject);
+        setPendingAction({ mode: "edit", buildingId: objectId });
         setModalMode("edit");
         setError(null);
         return;
@@ -160,7 +162,7 @@ export function useGridInteraction() {
       try {
         if (pendingAction.mode === "create" && pendingAction.position) {
           const color = Math.random() * 0xffffff;
-          await createCube(
+          await createBuilding(
             {
               position_x: pendingAction.position[0],
               position_y: pendingAction.position[1],
@@ -175,9 +177,9 @@ export function useGridInteraction() {
           );
           setModalMode(null);
           setPendingAction(null);
-        } else if (pendingAction.mode === "edit" && pendingAction.cubeId) {
-          await updateCube(
-            pendingAction.cubeId,
+        } else if (pendingAction.mode === "edit" && pendingAction.buildingId) {
+          await updateBuilding(
+            pendingAction.buildingId,
             {
               title: data.title,
               author: data.author,
@@ -188,8 +190,8 @@ export function useGridInteraction() {
           );
           setModalMode(null);
           setPendingAction(null);
-        } else if (pendingAction.mode === "delete" && pendingAction.cubeId) {
-          await deleteCube(pendingAction.cubeId, data.password);
+        } else if (pendingAction.mode === "delete" && pendingAction.buildingId) {
+          await deleteBuilding(pendingAction.buildingId, data.password);
           setModalMode(null);
           setPendingAction(null);
         }
@@ -202,13 +204,13 @@ export function useGridInteraction() {
         setError(errorMessage);
       }
     },
-    [pendingAction, createCube, updateCube, deleteCube],
+    [pendingAction, createBuilding, updateBuilding, deleteBuilding],
   );
 
   const handleModalClose = useCallback(() => {
     setModalMode(null);
     setPendingAction(null);
-    setSelectedCube(null);
+    setSelectedBuilding(null);
     setError(null);
   }, []);
 
@@ -217,9 +219,8 @@ export function useGridInteraction() {
     hoveredObjectId,
     objects,
     modalMode,
-    selectedCube,
+    selectedBuilding,
     error,
-    isLoading,
     onCellPointerOver,
     onCellPointerOut,
     onCellClick,
@@ -230,6 +231,5 @@ export function useGridInteraction() {
     setObjectState,
     handleModalSubmit,
     handleModalClose,
-    clearCubes,
   };
 }

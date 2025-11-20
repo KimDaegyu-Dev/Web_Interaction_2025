@@ -14,7 +14,7 @@ import { useGridRaycasting } from "./hooks/useGridRaycasting";
 import { screenToGridCoords } from "./utils/raycasting";
 import { calculateObliqueMatrix } from "./utils/projection";
 import { GRID_CONFIG } from "./config/grid";
-import { CubeModal } from "@/components/CubeModal";
+import { BuildingModal } from "@/components/BuildingModal";
 
 interface SceneProps {
   gridInteraction: ReturnType<typeof useGridInteraction>;
@@ -169,8 +169,8 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
 export function ObliqueProjectionScene() {
   const gridInteraction = useGridInteraction();
   const {
-    modalMode: cubeModalMode,
-    selectedCube,
+    modalMode: buildingModalMode,
+    selectedBuilding,
     error,
     handleModalSubmit,
     handleModalClose,
@@ -275,13 +275,13 @@ export function ObliqueProjectionScene() {
         thresholdY={300}
         mousePosition={mousePosition}
       />
-      {cubeModalMode && (
-        <CubeModal
-          isOpen={!!cubeModalMode}
+      {buildingModalMode && (
+        <BuildingModal
+          isOpen={!!buildingModalMode}
           onClose={handleModalClose}
           onSubmit={handleModalSubmit}
-          mode={cubeModalMode}
-          cube={selectedCube || undefined}
+          mode={buildingModalMode}
+          building={selectedBuilding || undefined}
           error={error}
         />
       )}

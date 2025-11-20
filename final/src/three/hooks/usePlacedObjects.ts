@@ -3,6 +3,7 @@ import type { ObjectStateKey } from "../objectSystem/modelLibrary";
 import { getModelDefinition, modelLibrary } from "../objectSystem/modelLibrary";
 import { useGLTF } from "@react-three/drei";
 import { GRID_CONFIG } from "../config/grid";
+import { MODEL_CONFIG } from "../config/models";
 
 export type PlacementPolicy = "skip" | "replace";
 
@@ -75,11 +76,6 @@ export function usePlacedObjects(defaultModelKey?: string) {
   );
 
 
-
-// ... existing imports ...
-
-// ... existing code ...
-
   const placeObject = useCallback(
     ({
       gridX,
@@ -115,8 +111,12 @@ export function usePlacedObjects(defaultModelKey?: string) {
 
       const newObject: SceneObjectInstance = {
         id: `temp_${Date.now()}`,
-        modelKey: "building_basic",
-        position: [gridX, height, gridZ],
+        modelKey: definition.key,
+        position: [
+          gridX + MODEL_CONFIG.DEFAULT_POSITION_OFFSET[0],
+          height + MODEL_CONFIG.DEFAULT_POSITION_OFFSET[1],
+          gridZ + MODEL_CONFIG.DEFAULT_POSITION_OFFSET[2],
+        ],
         rotation: rotation || definition.defaultRotation || [0, 0, 0], // Assuming MODEL_CONFIG.DEFAULT_ROTATION is meant to replace this
         scale: scale || definition.defaultScale || [1, 1, 1], // Assuming MODEL_CONFIG.DEFAULT_SCALE is meant to replace this
         state: nextState, // Assuming "created" is meant to replace this
@@ -182,6 +182,45 @@ export function usePlacedObjects(defaultModelKey?: string) {
     },
     [],
   );
+
+  const deleteObject = useCallback((objectId: string) => {
+    setObjects((prev) => prev.filter((obj) => obj.id !== objectId));
+  }, []);
+
+  const updateObject = useCallback(
+    (
+      objectId: string,
+      updates: {
+        title?: string | null;
+        author?: string | null;
+        message1?: string | null;
+        message2?: string | null;
+      },
+    ) => {
+      setObjects((prev) =>
+        prev.map((obj) =>
+          obj.id === objectId
+            ? {
+                ...obj,
+                title: updates.title ?? obj.title,
+                author: updates.author ?? obj.author,
+                message1: updates.message1 ?? obj.message1,
+                message2: updates.message2 ?? obj.message2,
+                metadata: {
+                  ...obj.metadata,
+                  title: updates.title ?? obj.metadata?.title,
+                  author: updates.author ?? obj.metadata?.author,
+                  message1: updates.message1 ?? obj.metadata?.message1,
+                  message2: updates.message2 ?? obj.metadata?.message2,
+                },
+              }
+            : obj,
+        ),
+      );
+    },
+    [],
+  );
+
   type ExternalObject = {
     id: string;
     position: [number, number, number];
@@ -218,7 +257,11 @@ export function usePlacedObjects(defaultModelKey?: string) {
           return {
             id: entry.id,
             modelKey,
-            position: entry.position,
+            position: [
+              entry.position[0] + MODEL_CONFIG.DEFAULT_POSITION_OFFSET[0],
+              entry.position[1] + MODEL_CONFIG.DEFAULT_POSITION_OFFSET[1],
+              entry.position[2] + MODEL_CONFIG.DEFAULT_POSITION_OFFSET[2],
+            ],
             rotation: existing?.rotation || defForEntry.defaultRotation || [0, 0, 0],
             scale: existing?.scale || defForEntry.defaultScale || [1, 1, 1],
             state: preservedState,
@@ -241,6 +284,8 @@ export function usePlacedObjects(defaultModelKey?: string) {
     setObjectState,
     restoreRestState,
     setAllObjectsState,
+    deleteObject,
+    updateObject,
     syncFromExternal,
   };
 }

@@ -19,6 +19,7 @@ export interface AnimationBinding {
 export interface ModelDefinition {
   key: string;
   url: string;
+  nodeName?: string; // For single GLB with multiple nodes
   defaultScale?: [number, number, number];
   defaultRotation?: [number, number, number];
   defaultState?: ObjectStateKey;
@@ -31,41 +32,47 @@ export interface ModelDefinition {
   };
 }
 
-export const modelLibrary: ModelDefinition[] = [
-  {
-    key: "building_basic",
-    url: import.meta.env.DEV ? "models/building.glb" : "models/building.glb",
+const COMMON_ANIMATION_MAP: Record<ObjectStateKey, AnimationBinding> = {
+  idle: {
+    clip: "Idle",
+    loop: THREE.LoopRepeat,
+  },
+  created: {
+    clip: "Bloom",
+    loop: THREE.LoopOnce,
+    clampWhenFinished: true,
+    nextState: "idle",
+  },
+  clicked: {
+    clip: "Wind",
+    loop: THREE.LoopOnce,
+    nextState: "idle",
+  },
+  deleted: {
+    clip: "Hover",
+    loop: THREE.LoopOnce,
+    clampWhenFinished: true,
+  },
+};
+
+export const modelLibrary: ModelDefinition[] = MODEL_CONFIG.BUILDING_TYPES.map(
+  (type) => ({
+    key: type.key,
+    url:
+      MODEL_CONFIG.LOAD_STRATEGY === "single_glb"
+        ? MODEL_CONFIG.SHARED_GLB_URL
+        : `${MODEL_CONFIG.BASE_URL}${type.key}.glb`,
+    nodeName: type.nodeName,
     defaultScale: MODEL_CONFIG.DEFAULT_SCALE,
     defaultRotation: MODEL_CONFIG.DEFAULT_ROTATION,
     defaultState: "created",
-    animationMap: {
-      idle: {
-        clip: "Idle",
-        loop: THREE.LoopRepeat,
-      },
-      created: {
-        clip: "Bloom",
-        loop: THREE.LoopOnce,
-        clampWhenFinished: true,
-        nextState: "idle",
-      },
-      clicked: {
-        clip: "Wind",
-        loop: THREE.LoopOnce,
-        nextState: "idle",
-      },
-      deleted: {
-        clip: "Hover", // Placeholder for now
-        loop: THREE.LoopOnce,
-        clampWhenFinished: true,
-      },
-    },
+    animationMap: COMMON_ANIMATION_MAP,
     metadataDefaults: {
-      title: "New Building",
+      title: type.name,
       author: "System",
     },
-  },
-];
+  }),
+);
 
 export function getModelDefinition(key?: string) {
   if (!key) return undefined;

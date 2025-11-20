@@ -12,8 +12,8 @@ export const supabase = createClient(
   },
 );
 
-// 큐브 데이터 타입 정의
-export interface CubeData {
+// 건물 데이터 타입 정의
+export interface BuildingData {
   id: string;
   position_x: number;
   position_y: number;
@@ -28,7 +28,7 @@ export interface CubeData {
   updated_at?: string;
 }
 
-export interface InsertCubeData {
+export interface InsertBuildingData {
   position_x: number;
   position_y: number;
   position_z: number;

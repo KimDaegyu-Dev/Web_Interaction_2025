@@ -48,7 +48,26 @@ export function StatefulModelInstance({
   hovered = false,
 }: StatefulModelInstanceProps) {
   const gltf = useGLTF(definition.url);
-  const clonedScene = useMemo(() => clone(gltf.scene), [gltf.scene]);
+  const clonedScene = useMemo(() => {
+    if (definition.nodeName) {
+      const node = gltf.scene.getObjectByName(definition.nodeName);
+      if (node) {
+        const clonedNode = clone(node) as THREE.Object3D;
+        // Reset position/rotation/scale of the node itself as it will be controlled by the group
+        clonedNode.position.set(0, 0, 0);
+        clonedNode.rotation.set(0, 0, 0);
+        clonedNode.scale.set(1, 1, 1);
+        const group = new THREE.Group();
+        group.add(clonedNode);
+        return group;
+      } else {
+        console.warn(
+          `Node ${definition.nodeName} not found in ${definition.url}`,
+        );
+      }
+    }
+    return clone(gltf.scene);
+  }, [gltf.scene, definition.nodeName, definition.url]);
   const groupRef = useRef<THREE.Group>(null);
 
   const displayScale = useMemo<[number, number, number]>(() => {
