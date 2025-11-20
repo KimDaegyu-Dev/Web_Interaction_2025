@@ -13,6 +13,7 @@ import { useProjectionControls } from "./hooks/useProjectionControls";
 import { useGridRaycasting } from "./hooks/useGridRaycasting";
 import { screenToGridCoords } from "./utils/raycasting";
 import { calculateObliqueMatrix } from "./utils/projection";
+import { GRID_CONFIG } from "./config/grid";
 import { CubeModal } from "@/components/CubeModal";
 
 interface SceneProps {
@@ -33,10 +34,6 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
   const objectGroupRef = useRef<THREE.Group>(null);
   const { scene, camera, gl } = useThree();
 
-  // 배경색 설정
-  useEffect(() => {
-    scene.background = new THREE.Color("#f5f5f5");
-  }, [scene]);
 
   // ObliqueControls 초기화 (패닝 & 줌)
   const { getPanOffset, getEdgeZone } = useObliqueControls();
@@ -50,7 +47,6 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
   const {
     hoveredCell,
     objects,
-    isShiftPressed,
     hoveredObjectId,
     onCellPointerOver,
     onCellPointerOut,
@@ -79,6 +75,11 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
     onCellPointerOut,
   });
 
+  // 배경색 설정
+  useEffect(() => {
+    scene.background = new THREE.Color(GRID_CONFIG.COLORS.BACKGROUND);
+  }, [scene]);
+
   // 클릭 이벤트 핸들러
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -93,14 +94,26 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
         inverseMatrix,
       );
 
+
+
+// ... existing code ...
+
       if (gridCoords) {
         const syntheticEvent = {
           stopPropagation: () => {},
-          shiftKey: e.shiftKey,
-          point: new THREE.Vector3(gridCoords.x, -2, gridCoords.z),
+          point: new THREE.Vector3(
+            gridCoords.x + GRID_CONFIG.CELL_SIZE / 2,
+            GRID_CONFIG.DEFAULT_OBJECT_Y,
+            gridCoords.z + GRID_CONFIG.CELL_SIZE / 2,
+          ),
         } as ThreeEvent<MouseEvent>;
 
-        onCellClick(syntheticEvent, gridCoords.x, -2, gridCoords.z);
+        onCellClick(
+          syntheticEvent,
+          gridCoords.x + GRID_CONFIG.CELL_SIZE / 2,
+          GRID_CONFIG.DEFAULT_OBJECT_Y,
+          gridCoords.z + GRID_CONFIG.CELL_SIZE / 2,
+        );
       }
     };
 
@@ -133,7 +146,6 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
       <group ref={gridHighlightGroupRef}>
         <GridHighlight
           hoveredCell={hoveredCell}
-          isShiftPressed={isShiftPressed}
         />
       </group>
 

@@ -1,9 +1,8 @@
 import * as THREE from "three";
-import { ROOM_HEIGHT } from "../../config/constants";
+import { GRID_CONFIG } from "../../config/grid";
 
 interface GridHighlightProps {
   hoveredCell: { x: number; z: number } | null;
-  isShiftPressed: boolean;
 }
 
 /**
@@ -11,7 +10,6 @@ interface GridHighlightProps {
  */
 export function GridHighlight({
   hoveredCell,
-  isShiftPressed,
 }: GridHighlightProps) {
   if (!hoveredCell) {
     return null;
@@ -21,20 +19,25 @@ export function GridHighlight({
     <mesh
       position={[
         hoveredCell.x,
-        -ROOM_HEIGHT / 2 + 0.02, // 바닥보다 약간 위에 배치
+        GRID_CONFIG.GRID_Y_OFFSET, // 바닥보다 약간 위에 배치
         hoveredCell.z,
       ]}
       rotation={[-Math.PI / 2, 0, 0]}
     >
-      <planeGeometry args={[0.95, 0.95]} />
+      <planeGeometry
+        args={[
+          GRID_CONFIG.CELL_SIZE - GRID_CONFIG.CELL_PADDING,
+          GRID_CONFIG.CELL_SIZE - GRID_CONFIG.CELL_PADDING,
+        ]}
+      />
       <meshStandardMaterial
-        color={isShiftPressed ? 0x00ff00 : 0x4a90e2}
-        emissive={isShiftPressed ? 0x00ff00 : 0x4a90e2}
-        emissiveIntensity={isShiftPressed ? 0.8 : 0.3}
+        color={GRID_CONFIG.COLORS.HIGHLIGHT_DEFAULT}
+        emissive={GRID_CONFIG.COLORS.EMISSIVE_DEFAULT}
+        emissiveIntensity={0.3}
         roughness={0.8}
         metalness={0.2}
         transparent
-        opacity={isShiftPressed ? 1.0 : 0.7}
+        opacity={GRID_CONFIG.OPACITY.DEFAULT}
       />
     </mesh>
   );

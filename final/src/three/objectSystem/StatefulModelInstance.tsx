@@ -9,6 +9,7 @@ import type {
   ObjectStateKey,
 } from "./modelLibrary";
 import type { SceneObjectInstance } from "../hooks/usePlacedObjects";
+import { MODEL_CONFIG } from "../config/models";
 
 interface StatefulModelInstanceProps {
   instance: SceneObjectInstance;
@@ -47,15 +48,14 @@ export function StatefulModelInstance({
   hovered = false,
 }: StatefulModelInstanceProps) {
   const gltf = useGLTF(definition.url);
-  const clonedScene = useMemo(
-    () => clone(gltf.scene),
-    [gltf.scene],
-  );
+  const clonedScene = useMemo(() => clone(gltf.scene), [gltf.scene]);
   const groupRef = useRef<THREE.Group>(null);
 
   const displayScale = useMemo<[number, number, number]>(() => {
-    const [sx, sy, sz] = instance.scale;
-    const factor = hovered ? 1.05 : 1;
+    const [sx, sy, sz] = instance.scale.map(
+      (s) => s * MODEL_CONFIG.SCALE_MULTIPLIER,
+    );
+    const factor = hovered ? MODEL_CONFIG.HOVER_SCALE_FACTOR : 1;
     return [sx * factor, sy * factor, sz * factor];
   }, [hovered, instance.scale]);
 
@@ -75,7 +75,8 @@ export function StatefulModelInstance({
     if (!binding || !action) return;
 
     const previousAction = activeActionRef.current;
-    const crossFade = binding.crossFadeSeconds ?? 0.3;
+    const crossFade =
+      binding.crossFadeSeconds ?? MODEL_CONFIG.ANIMATION.DEFAULT_CROSS_FADE;
 
     action.reset();
     action.enabled = true;
@@ -101,7 +102,13 @@ export function StatefulModelInstance({
     return () => {
       action.getMixer().removeEventListener("finished", handleFinished);
     };
-  }, [actions, definition.animationMap, instance.id, instance.state, onRequestStateChange]);
+  }, [
+    actions,
+    definition.animationMap,
+    instance.id,
+    instance.state,
+    onRequestStateChange,
+  ]);
 
   useFrame((_, delta) => {
     if (mixer) {

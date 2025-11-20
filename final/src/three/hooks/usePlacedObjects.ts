@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ObjectStateKey } from "../objectSystem/modelLibrary";
 import { getModelDefinition, modelLibrary } from "../objectSystem/modelLibrary";
 import { useGLTF } from "@react-three/drei";
+import { GRID_CONFIG } from "../config/grid";
 
 export type PlacementPolicy = "skip" | "replace";
 
@@ -73,11 +74,17 @@ export function usePlacedObjects(defaultModelKey?: string) {
     [objects],
   );
 
+
+
+// ... existing imports ...
+
+// ... existing code ...
+
   const placeObject = useCallback(
     ({
       gridX,
       gridZ,
-      height = -3,
+      height = GRID_CONFIG.DEFAULT_OBJECT_Y,
       modelKey,
       rotation,
       scale,
@@ -107,12 +114,12 @@ export function usePlacedObjects(defaultModelKey?: string) {
       };
 
       const newObject: SceneObjectInstance = {
-        id,
-        modelKey: definition.key,
+        id: `temp_${Date.now()}`,
+        modelKey: "building_basic",
         position: [gridX, height, gridZ],
-        rotation: rotation || definition.defaultRotation || [0, 0, 0],
-        scale: scale || definition.defaultScale || [1, 1, 1],
-        state: nextState,
+        rotation: rotation || definition.defaultRotation || [0, 0, 0], // Assuming MODEL_CONFIG.DEFAULT_ROTATION is meant to replace this
+        scale: scale || definition.defaultScale || [1, 1, 1], // Assuming MODEL_CONFIG.DEFAULT_SCALE is meant to replace this
+        state: nextState, // Assuming "created" is meant to replace this
         restState: nextState,
         metadata: baseMetadata,
         title: baseMetadata.title ?? null,

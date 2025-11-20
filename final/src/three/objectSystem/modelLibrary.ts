@@ -1,11 +1,11 @@
 import * as THREE from "three";
+import { MODEL_CONFIG } from "../config/models";
 
 export type ObjectStateKey =
   | "idle"
-  | "bloom"
-  | "wind"
-  | "hover"
-  | "custom"
+  | "created"
+  | "deleted"
+  | "clicked"
   | (string & {});
 
 export interface AnimationBinding {
@@ -33,40 +33,35 @@ export interface ModelDefinition {
 
 export const modelLibrary: ModelDefinition[] = [
   {
-    key: "flower_basic",
-    url: import.meta.env.DEV ? "models/flower.glb" : "models/flower.glb",
-    defaultScale: [1.4, 1.4, 1.4],
-    defaultRotation: [0, Math.PI / 4, 0],
-    defaultState: "idle",
+    key: "building_basic",
+    url: import.meta.env.DEV ? "models/building.glb" : "models/building.glb",
+    defaultScale: MODEL_CONFIG.DEFAULT_SCALE,
+    defaultRotation: MODEL_CONFIG.DEFAULT_ROTATION,
+    defaultState: "created",
     animationMap: {
       idle: {
         clip: "Idle",
         loop: THREE.LoopRepeat,
       },
-      hover: {
-        clip: "Hover",
-        loop: THREE.LoopOnce,
-        clampWhenFinished: true,
-        nextState: "idle",
-      },
-      wind: {
-        clip: "Wind",
-        loop: THREE.LoopRepeat,
-        crossFadeSeconds: 0.25,
-      },
-      bloom: {
+      created: {
         clip: "Bloom",
         loop: THREE.LoopOnce,
         clampWhenFinished: true,
         nextState: "idle",
       },
-      custom: {
-        clip: "Idle",
-        loop: THREE.LoopRepeat,
+      clicked: {
+        clip: "Wind",
+        loop: THREE.LoopOnce,
+        nextState: "idle",
+      },
+      deleted: {
+        clip: "Hover", // Placeholder for now
+        loop: THREE.LoopOnce,
+        clampWhenFinished: true,
       },
     },
     metadataDefaults: {
-      title: "Prototype Flower",
+      title: "New Building",
       author: "System",
     },
   },

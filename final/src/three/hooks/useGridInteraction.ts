@@ -26,7 +26,6 @@ interface PendingAction {
 export function useGridInteraction() {
   const [hoveredCell, setHoveredCell] = useState<GridCell | null>(null);
   const [hoveredObjectId, setHoveredObjectId] = useState<string | null>(null);
-  const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(
     null,
@@ -72,29 +71,6 @@ export function useGridInteraction() {
     [objects],
   );
 
-  // Shift 키 상태 추적 (프롬프트에서 요구한 입력 유지)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Shift") {
-        setIsShiftPressed(true);
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === "Shift") {
-        setIsShiftPressed(false);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, []);
-
   // 그리드 셀 호버
   const onCellPointerOver = useCallback((x: number, z: number) => {
     setHoveredCell({ x, z });
@@ -138,8 +114,8 @@ export function useGridInteraction() {
         return;
       }
 
-      // fallback: play bloom animation if not synced yet
-      setObjectState(objectId, "bloom");
+      // fallback: play clicked animation if not synced yet
+      setObjectState(objectId, "clicked");
     },
     [objects, setObjectState],
   );
@@ -148,9 +124,9 @@ export function useGridInteraction() {
     (e: ThreeEvent<PointerEvent>, objectId: string) => {
       e.stopPropagation();
       setHoveredObjectId(objectId);
-      setObjectState(objectId, "hover", { setAsRestState: false });
+      // Hover state removed as per refactoring
     },
-    [setObjectState],
+    [],
   );
 
   const onObjectPointerOut = useCallback(
@@ -164,7 +140,7 @@ export function useGridInteraction() {
 
   const setGlobalState = useCallback(
     (state: ObjectStateKey) => {
-      setAllObjectsState(state, { setAsRestState: state !== "hover" });
+      setAllObjectsState(state, { setAsRestState: true });
     },
     [setAllObjectsState],
   );
@@ -238,7 +214,6 @@ export function useGridInteraction() {
 
   return {
     hoveredCell,
-    isShiftPressed,
     hoveredObjectId,
     objects,
     modalMode,

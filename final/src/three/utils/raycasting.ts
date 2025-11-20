@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ROOM_HEIGHT } from "../config/constants";
+import { GRID_CONFIG } from "../config/grid";
 
 /**
  * NDC 좌표를 월드 좌표의 Ray로 변환
@@ -43,7 +43,7 @@ export function intersectRayWithFloorPlane(
   rayOrigin: THREE.Vector3,
   rayDirection: THREE.Vector3,
 ): THREE.Vector3 | null {
-  const floorY = -ROOM_HEIGHT / 2;
+  const floorY = GRID_CONFIG.FLOOR_LEVEL;
   const planeNormal = new THREE.Vector3(0, 1, 0);
   const planePoint = new THREE.Vector3(0, floorY, 0);
 
@@ -77,7 +77,7 @@ export function intersectRayWithFloorPlane(
  */
 export function worldToGridCoords(
   worldPoint: THREE.Vector3,
-  gridSize: number = 1,
+  gridSize: number = GRID_CONFIG.CELL_SIZE,
 ): { x: number; z: number } {
   const snappedX = Math.round(worldPoint.x / gridSize) * gridSize;
   const snappedZ = Math.round(worldPoint.z / gridSize) * gridSize;
