@@ -224,6 +224,7 @@ export function usePlacedObjects(defaultModelKey?: string) {
   type ExternalObject = {
     id: string;
     position: [number, number, number];
+    mesh_index?: number;
     title?: string | null;
     author?: string | null;
     message1?: string | null;
@@ -242,7 +243,19 @@ export function usePlacedObjects(defaultModelKey?: string) {
 
         return entries.map((entry) => {
           const existing = prevMap.get(entry.id);
-          const modelKey = entry.modelKey || defaultDef.key;
+          
+          // Determine modelKey from mesh_index or fallback to provided modelKey or default
+          let modelKey: string;
+          if (entry.mesh_index !== undefined) {
+            // Find the model with matching meshIndex
+            const modelWithIndex = MODEL_CONFIG.BUILDING_TYPES.find(
+              (type) => type.meshIndex === entry.mesh_index
+            );
+            modelKey = modelWithIndex?.key || defaultDef.key;
+          } else {
+            modelKey = entry.modelKey || defaultDef.key;
+          }
+          
           const defForEntry = getModelDefinition(modelKey) || defaultDef;
           const preservedState = existing?.state ?? defForEntry.defaultState ?? "idle";
           const baseMetadata = {

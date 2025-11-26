@@ -5,6 +5,8 @@ import { ObliqueCamera } from "./cameras/ObliqueCamera";
 import { Lights } from "./lights/Lights";
 import { InteractiveDisplayObjects } from "./components/DisplayObjects/InteractiveDisplayObjects";
 import { GridHighlight } from "./components/Grid/GridHighlight";
+import { GridFloor } from "./components/Grid/GridFloor";
+import { InfiniteBackground } from "./components/Grid/InfiniteBackground";
 import { EdgeZoneIndicator } from "./components/EdgeZoneIndicator";
 import { useObliqueProjection } from "./hooks/useObliqueProjection";
 import { useObliqueControls } from "./hooks/useObliqueControls";
@@ -47,13 +49,11 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
   const {
     hoveredCell,
     objects,
-    hoveredObjectId,
+    clickedObjectId,
     onCellPointerOver,
     onCellPointerOut,
     onCellClick,
     onObjectClick,
-    onObjectPointerOver,
-    onObjectPointerOut,
     setObjectState,
   } = gridInteraction;
 
@@ -102,17 +102,17 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
         const syntheticEvent = {
           stopPropagation: () => {},
           point: new THREE.Vector3(
-            gridCoords.x + GRID_CONFIG.CELL_SIZE / 2,
+            gridCoords.x,
             GRID_CONFIG.DEFAULT_OBJECT_Y,
-            gridCoords.z + GRID_CONFIG.CELL_SIZE / 2,
+            gridCoords.z,
           ),
         } as ThreeEvent<MouseEvent>;
 
         onCellClick(
           syntheticEvent,
-          gridCoords.x + GRID_CONFIG.CELL_SIZE / 2,
+          gridCoords.x,
           GRID_CONFIG.DEFAULT_OBJECT_Y,
-          gridCoords.z + GRID_CONFIG.CELL_SIZE / 2,
+          gridCoords.z,
         );
       }
     };
@@ -149,17 +149,17 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
         />
       </group>
 
+      {/* Infinite Background rendered via Shader - Outside of transformed group */}
+      <InfiniteBackground />
+
       {/* 오브젝트들 - Oblique 투영 적용 */}
       <group ref={objectGroupRef}>
+        <GridFloor objects={objects} />
         <InteractiveDisplayObjects
           objects={objects}
-          hoveredObjectId={hoveredObjectId}
+          clickedObjectId={clickedObjectId}
           onObjectClick={onObjectClick}
-          onObjectPointerOver={onObjectPointerOver}
-          onObjectPointerOut={onObjectPointerOut}
-          onRequestStateChange={(id, nextState) =>
-            setObjectState(id, nextState)
-          }
+          onRequestStateChange={setObjectState}
         />
       </group>
     </>

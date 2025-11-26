@@ -25,7 +25,7 @@ interface PendingAction {
 
 export function useGridInteraction() {
   const [hoveredCell, setHoveredCell] = useState<GridCell | null>(null);
-  const [hoveredObjectId, setHoveredObjectId] = useState<string | null>(null);
+  const [clickedObjectId, setClickedObjectId] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(
     null,
@@ -57,6 +57,7 @@ export function useGridInteraction() {
     const entries = remoteBuildings.map((building) => ({
       id: building.id,
       position: building.position,
+      mesh_index: building.mesh_index,
       title: building.title,
       author: building.author,
       message1: building.message1,
@@ -64,6 +65,7 @@ export function useGridInteraction() {
     }));
     syncFromExternal(entries);
   }, [remoteBuildings, syncFromExternal]);
+
 
   const objectsByCell = useMemo(
     () =>
@@ -90,10 +92,9 @@ export function useGridInteraction() {
       const existing = objectsByCell.get(key);
 
       if (existing) {
-        setSelectedBuilding(existing);
-        setPendingAction({ mode: "delete", buildingId: existing.id });
-        setModalMode("delete");
-        setError(null);
+        // 건물이 있는 그리드 클릭 시 건물 클릭 이벤트로 처리
+        setClickedObjectId(existing.id);
+        // TODO: 건물로 카메라 줌인 로직은 별도로 구현 필요
       } else {
         setSelectedBuilding(null);
         setPendingAction({ mode: "create", position: [x, y, z] });
@@ -109,10 +110,15 @@ export function useGridInteraction() {
       e.stopPropagation();
       const matchingObject = objects.find((o) => o.id === objectId);
       if (matchingObject) {
-        setSelectedBuilding(matchingObject);
-        setPendingAction({ mode: "edit", buildingId: objectId });
-        setModalMode("edit");
-        setError(null);
+        // 건물 클릭 시 카메라 줌인
+        setClickedObjectId(objectId);
+        // TODO: 건물로 카메라 줌인 로직은 별도로 구현 필요
+        
+        // TODO: 건물 수정 부분 구현
+        // setSelectedBuilding(matchingObject);
+        // setPendingAction({ mode: "edit", buildingId: objectId });
+        // setModalMode("edit");
+        // setError(null);
         return;
       }
 
@@ -122,23 +128,23 @@ export function useGridInteraction() {
     [objects, setObjectState],
   );
 
-  const onObjectPointerOver = useCallback(
-    (e: ThreeEvent<PointerEvent>, objectId: string) => {
-      e.stopPropagation();
-      setHoveredObjectId(objectId);
-      // Hover state removed as per refactoring
-    },
-    [],
-  );
+  // 호버 이벤트 제거 - 클릭 이벤트로 대체
+  // const onObjectPointerOver = useCallback(
+  //   (e: ThreeEvent<PointerEvent>, objectId: string) => {
+  //     e.stopPropagation();
+  //     setHoveredObjectId(objectId);
+  //   },
+  //   [],
+  // );
 
-  const onObjectPointerOut = useCallback(
-    (e: ThreeEvent<PointerEvent>, objectId: string) => {
-      e.stopPropagation();
-      setHoveredObjectId((prev) => (prev === objectId ? null : prev));
-      restoreRestState(objectId);
-    },
-    [restoreRestState],
-  );
+  // const onObjectPointerOut = useCallback(
+  //   (e: ThreeEvent<PointerEvent>, objectId: string) => {
+  //     e.stopPropagation();
+  //     setHoveredObjectId((prev) => (prev === objectId ? null : prev));
+  //     restoreRestState(objectId);
+  //   },
+  //   [restoreRestState],
+  // );
 
   const setGlobalState = useCallback(
     (state: ObjectStateKey) => {
@@ -154,6 +160,7 @@ export function useGridInteraction() {
       author?: string;
       message1?: string;
       message2?: string;
+      meshIndex: number;
     }) => {
       if (!pendingAction) return;
 
@@ -168,6 +175,7 @@ export function useGridInteraction() {
               position_y: pendingAction.position[1],
               position_z: pendingAction.position[2],
               color: Math.floor(color),
+              mesh_index: data.meshIndex,
               title: data.title,
               author: data.author,
               message1: data.message1,
@@ -207,6 +215,7 @@ export function useGridInteraction() {
     [pendingAction, createBuilding, updateBuilding, deleteBuilding],
   );
 
+
   const handleModalClose = useCallback(() => {
     setModalMode(null);
     setPendingAction(null);
@@ -216,7 +225,7 @@ export function useGridInteraction() {
 
   return {
     hoveredCell,
-    hoveredObjectId,
+    clickedObjectId,
     objects,
     modalMode,
     selectedBuilding,
@@ -225,8 +234,8 @@ export function useGridInteraction() {
     onCellPointerOut,
     onCellClick,
     onObjectClick,
-    onObjectPointerOver,
-    onObjectPointerOut,
+    // onObjectPointerOver,
+    // onObjectPointerOut,
     setGlobalState,
     setObjectState,
     handleModalSubmit,

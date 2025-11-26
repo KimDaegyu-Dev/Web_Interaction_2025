@@ -19,7 +19,8 @@ export interface AnimationBinding {
 export interface ModelDefinition {
   key: string;
   url: string;
-  nodeName?: string; // For single GLB with multiple nodes
+  nodeName?: string; // For single GLB with multiple nodes (deprecated)
+  meshIndex?: number; // Index of the mesh to render from the GLB file
   defaultScale?: [number, number, number];
   defaultRotation?: [number, number, number];
   defaultState?: ObjectStateKey;
@@ -62,7 +63,7 @@ export const modelLibrary: ModelDefinition[] = MODEL_CONFIG.BUILDING_TYPES.map(
       MODEL_CONFIG.LOAD_STRATEGY === "single_glb"
         ? MODEL_CONFIG.SHARED_GLB_URL
         : `${MODEL_CONFIG.BASE_URL}${type.key}.glb`,
-    nodeName: type.nodeName,
+    meshIndex: type.meshIndex,
     defaultScale: MODEL_CONFIG.DEFAULT_SCALE,
     defaultRotation: MODEL_CONFIG.DEFAULT_ROTATION,
     defaultState: "created",
@@ -73,6 +74,7 @@ export const modelLibrary: ModelDefinition[] = MODEL_CONFIG.BUILDING_TYPES.map(
     },
   }),
 );
+
 
 export function getModelDefinition(key?: string) {
   if (!key) return undefined;

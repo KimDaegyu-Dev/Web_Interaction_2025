@@ -7,19 +7,15 @@ import type { ObjectStateKey } from "../../objectSystem/modelLibrary";
 
 interface InteractiveDisplayObjectsProps {
   objects?: PlacedObject[];
-  hoveredObjectId?: string | null;
+  clickedObjectId?: string | null;
   onObjectClick?: (e: ThreeEvent<MouseEvent>, buildingId: string) => void;
-  onObjectPointerOver?: (e: ThreeEvent<PointerEvent>, buildingId: string) => void;
-  onObjectPointerOut?: (e: ThreeEvent<PointerEvent>, buildingId: string) => void;
   onRequestStateChange?: (id: string, nextState: ObjectStateKey) => void;
 }
 
 export function InteractiveDisplayObjects({
   objects = [],
-  hoveredObjectId,
+  clickedObjectId,
   onObjectClick,
-  onObjectPointerOver,
-  onObjectPointerOut,
   onRequestStateChange,
 }: InteractiveDisplayObjectsProps) {
   return (
@@ -31,20 +27,17 @@ export function InteractiveDisplayObjects({
           return null;
         }
 
-        const isHovered = hoveredObjectId === object.id;
+        const isClicked = clickedObjectId === object.id;
 
         return (
           <group key={object.id}>
             <StatefulModelInstance
               instance={object}
               definition={definition}
-              hovered={isHovered}
-              onPointerOver={onObjectPointerOver}
-              onPointerOut={onObjectPointerOut}
-              onClick={(e) => onObjectClick?.(e, object.id)}
+              onClick={onObjectClick}
               onRequestStateChange={onRequestStateChange}
             />
-            {isHovered && (
+            {isClicked && (
               <BuildingTooltip
                 building={object}
                 position={[

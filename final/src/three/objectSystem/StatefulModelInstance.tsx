@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, memo } from "react";
 import { useFrame, ThreeEvent } from "@react-three/fiber";
 import { useAnimations, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -8,6 +8,7 @@ import type {
   ModelDefinition,
   ObjectStateKey,
 } from "./modelLibrary";
+import { modelCache } from "./ModelCache";
 import type { SceneObjectInstance } from "../hooks/usePlacedObjects";
 import { MODEL_CONFIG } from "../config/models";
 
@@ -15,10 +16,7 @@ interface StatefulModelInstanceProps {
   instance: SceneObjectInstance;
   definition: ModelDefinition;
   onRequestStateChange?: (id: string, nextState: ObjectStateKey) => void;
-  onPointerOver?: (e: ThreeEvent<PointerEvent>, id: string) => void;
-  onPointerOut?: (e: ThreeEvent<PointerEvent>, id: string) => void;
   onClick?: (e: ThreeEvent<MouseEvent>, id: string) => void;
-  hovered?: boolean;
 }
 
 function resolveAnimationBinding(
@@ -38,45 +36,91 @@ function resolveAnimationBinding(
   return { binding, action };
 }
 
-export function StatefulModelInstance({
+export const StatefulModelInstance = memo(function StatefulModelInstance({
   instance,
   definition,
   onRequestStateChange,
-  onPointerOver,
-  onPointerOut,
   onClick,
-  hovered = false,
 }: StatefulModelInstanceProps) {
   const gltf = useGLTF(definition.url);
+  
   const clonedScene = useMemo(() => {
-    if (definition.nodeName) {
-      const node = gltf.scene.getObjectByName(definition.nodeName);
-      if (node) {
-        const clonedNode = clone(node) as THREE.Object3D;
-        // Reset position/rotation/scale of the node itself as it will be controlled by the group
-        clonedNode.position.set(0, 0, 0);
-        clonedNode.rotation.set(0, 0, 0);
-        clonedNode.scale.set(1, 1, 1);
-        const group = new THREE.Group();
-        group.add(clonedNode);
-        return group;
-      } else {
-        console.warn(
-          `Node ${definition.nodeName} not found in ${definition.url}`,
-        );
+    // Construct a unique cache key
+    const cacheKey = definition.meshIndex !== undefined 
+      ? `${definition.url}_mesh_${definition.meshIndex}`
+      : definition.nodeName 
+        ? `${definition.url}_node_${definition.nodeName}`
+        : definition.url;
+
+    return modelCache.cloneFromCache(cacheKey, () => {
+      // Factory function: creates the base object to be cached
+      
+      // If meshIndex is specified, extract that specific mesh
+      if (definition.meshIndex !== undefined) {
+        const meshes: THREE.Mesh[] = [];
+        
+        // Traverse the scene to collect all meshes
+        gltf.scene.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            meshes.push(child);
+          }
+        });
+
+        // Get the mesh at the specified index
+        if (meshes[definition.meshIndex]) {
+          const targetMesh = meshes[definition.meshIndex];
+          // We clone here to create the prototype for the cache
+          const clonedMesh = clone(targetMesh) as THREE.Mesh;
+          
+          // Reset position/rotation/scale of the mesh itself
+          clonedMesh.position.set(0, 0, 0);
+          clonedMesh.rotation.set(0, 0, 0);
+          clonedMesh.scale.set(1, 1, 1);
+          
+          const group = new THREE.Group();
+          group.add(clonedMesh);
+          return group;
+        } else {
+          console.warn(
+            `Mesh index ${definition.meshIndex} not found in ${definition.url}. Total meshes: ${meshes.length}`,
+          );
+          // Fallback to empty group to prevent errors
+          return new THREE.Group();
+        }
       }
-    }
-    return clone(gltf.scene);
-  }, [gltf.scene, definition.nodeName, definition.url]);
+      
+      // Fallback: use nodeName if specified (deprecated)
+      if (definition.nodeName) {
+        const node = gltf.scene.getObjectByName(definition.nodeName);
+        if (node) {
+          const clonedNode = clone(node) as THREE.Object3D;
+          clonedNode.position.set(0, 0, 0);
+          clonedNode.rotation.set(0, 0, 0);
+          clonedNode.scale.set(1, 1, 1);
+          const group = new THREE.Group();
+          group.add(clonedNode);
+          return group;
+        } else {
+          console.warn(
+            `Node ${definition.nodeName} not found in ${definition.url}`,
+          );
+        }
+      }
+      
+      // Default: clone the entire scene
+      return clone(gltf.scene);
+    });
+  }, [gltf.scene, definition.meshIndex, definition.nodeName, definition.url]);
+
   const groupRef = useRef<THREE.Group>(null);
 
   const displayScale = useMemo<[number, number, number]>(() => {
     const [sx, sy, sz] = instance.scale.map(
       (s) => s * MODEL_CONFIG.SCALE_MULTIPLIER,
     );
-    const factor = hovered ? MODEL_CONFIG.HOVER_SCALE_FACTOR : 1;
-    return [sx * factor, sy * factor, sz * factor];
-  }, [hovered, instance.scale]);
+    // 호버 스케일 제거
+    return [sx, sy, sz];
+  }, [instance.scale]);
 
   const { actions, mixer } = useAnimations(gltf.animations, clonedScene);
   const activeActionRef = useRef<THREE.AnimationAction | null>(null);
@@ -141,12 +185,10 @@ export function StatefulModelInstance({
       position={instance.position}
       rotation={instance.rotation}
       scale={displayScale}
-      onPointerOver={(e) => onPointerOver?.(e, instance.id)}
-      onPointerOut={(e) => onPointerOut?.(e, instance.id)}
       onClick={(e) => onClick?.(e, instance.id)}
       userData={{ objectId: instance.id, modelKey: instance.modelKey }}
     >
       <primitive object={clonedScene} />
     </group>
   );
-}
+});

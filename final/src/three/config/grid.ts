@@ -1,6 +1,6 @@
 export const GRID_CONFIG = {
   CELL_SIZE: 5,
-  CELL_PADDING: 0.05,
+  CELL_PADDING: 0,
   FLOOR_LEVEL: 0,
   // Object placement height (typically slightly above floor or at specific level)
   DEFAULT_OBJECT_Y: 1, 

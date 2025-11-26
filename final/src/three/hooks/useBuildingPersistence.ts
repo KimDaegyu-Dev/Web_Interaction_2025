@@ -5,6 +5,7 @@ export interface Building {
   id: string;
   position: [number, number, number];
   color: number;
+  mesh_index: number;
   title?: string | null;
   author?: string | null;
   message1?: string | null;
@@ -36,6 +37,7 @@ export function useBuildingPersistence() {
             id: building.id,
             position: [building.position_x, building.position_y, building.position_z],
             color: building.color,
+            mesh_index: building.mesh_index,
             title: building.title,
             author: building.author,
             message1: building.message1,
@@ -91,6 +93,7 @@ export function useBuildingPersistence() {
                     newBuilding.position_z,
                   ],
                   color: newBuilding.color,
+                  mesh_index: newBuilding.mesh_index,
                   title: newBuilding.title,
                   author: newBuilding.author,
                   message1: newBuilding.message1,
@@ -171,6 +174,7 @@ export function useBuildingPersistence() {
             id: result.id,
             position: [result.position_x, result.position_y, result.position_z],
             color: result.color,
+            mesh_index: result.mesh_index,
             title: result.title,
             author: result.author,
             message1: result.message1,
