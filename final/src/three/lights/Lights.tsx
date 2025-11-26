@@ -25,7 +25,7 @@ export function Lights() {
       <ambientLight intensity={0.3} />
 
       {/* 메인 포인트 라이트 */}
-      <pointLight
+      {/* <pointLight
         position={[0, 2, 0]}
         intensity={1}
         distance={20}
@@ -33,30 +33,12 @@ export function Lights() {
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
         color={0xfff5e1}
-      />
-
-      {/* 악센트 라이트 1 */}
-      <pointLight
-        ref={accentLight1Ref}
-        position={[-3, 1, -3]}
-        intensity={0.5}
-        distance={10}
-        color={0x80d4ff}
-      />
-
-      {/* 악센트 라이트 2 */}
-      <pointLight
-        ref={accentLight2Ref}
-        position={[3, 1, 3]}
-        intensity={0.5}
-        distance={10}
-        color={0xff80aa}
-      />
+      /> */}
 
       {/* 방향성 조명 */}
       <directionalLight
         position={[5, 5, 5]}
-        intensity={0.5}
+        intensity={2.5}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
