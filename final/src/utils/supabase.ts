@@ -19,6 +19,7 @@ export interface BuildingData {
   position_y: number;
   position_z: number;
   color: number;
+  mesh_index: number;
   title?: string | null;
   author?: string | null;
   message1?: string | null;
@@ -28,14 +29,19 @@ export interface BuildingData {
   updated_at?: string;
 }
 
+
+
 export interface InsertBuildingData {
   position_x: number;
   position_y: number;
   position_z: number;
   color: number;
+  mesh_index: number;
   title?: string | null;
   author?: string | null;
   message1?: string | null;
   message2?: string | null;
   password: string;
 }
+
+
