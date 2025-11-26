@@ -38,7 +38,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  base: "/Web_Interaction_2025/week12/",
+  base: "/Web_Interaction_2025/week13/",
   build: {
     outDir: "../docs/week12",
     assetsDir: "assets",

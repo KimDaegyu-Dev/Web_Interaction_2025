@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter as ReactRouter, Routes, Route } from "react-router-dom";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import TestPage from "./pages/TestPage";
 import { ObliqueProjectionPage } from "./pages/ObliqueProjectionPage";
 import { useDebugMode } from "./utils";
 
