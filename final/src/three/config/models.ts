@@ -1,5 +1,5 @@
 export const MODEL_CONFIG = {
-  DEFAULT_SCALE: [1.4, 1.4, 1.4] as [number, number, number],
+  DEFAULT_SCALE: [3.0, 3.0, 3.0] as [number, number, number],
   DEFAULT_ROTATION: [0, Math.PI / 2, 0] as [number, number, number],
   DEFAULT_POSITION_OFFSET: [0, 0, 0] as [number, number, number],
   SCALE_MULTIPLIER: 0.05,
@@ -17,81 +17,81 @@ export const MODEL_CONFIG = {
   BUILDING_TYPES: [
     { 
       key: "cube_138", 
-      name: "Cube.138", 
+      name: "메트로 시티 아파트", 
       meshIndex: 0,
-      description: "거대한 복합 상업시설입니다. 현대적인 디자인과 넓은 공간으로 많은 사람들이 모이는 랜드마크가 될 것입니다."
+      description: "도심의 편리함과 고층의 탁 트인 전망을 모두 갖춘 현대적인 아파트입니다."
     },
     { 
       key: "cube", 
-      name: "Cube", 
+      name: "선샤인 빌라", 
       meshIndex: 1,
-      description: "기본적인 큐브 형태의 건물입니다. 심플하고 모던한 디자인으로 어디에나 잘 어울립니다."
+      description: "따스한 햇살이 가득 들어오는 남향 구조의 아늑한 빌라입니다."
     },
     { 
       key: "cube_085", 
-      name: "Cube.085", 
+      name: "그린 가든 단독주택", 
       meshIndex: 2,
-      description: "중형 오피스 빌딩입니다. 효율적인 공간 활용과 세련된 외관이 특징입니다."
+      description: "넓은 마당과 정원이 있어 자연과 함께 숨 쉬는 단독주택입니다."
     },
     { 
       key: "cube_121", 
-      name: "Cube.121", 
+      name: "리버뷰 아파트", 
       meshIndex: 3,
-      description: "고급 주거용 아파트 단지입니다. 쾌적한 생활 환경과 우수한 편의시설을 자랑합니다."
+      description: "창밖으로 흐르는 강을 바라보며 여유를 즐길 수 있는 프리미엄 아파트입니다."
     },
     { 
       key: "cube_001", 
-      name: "Cube.001", 
+      name: "코지 빌라", 
       meshIndex: 4,
-      description: "소규모 상점 건물입니다. 아담한 크기로 골목 상권에 최적화되어 있습니다."
+      description: "작지만 효율적인 공간 구성으로 1인 가구에게 안성맞춤인 빌라입니다."
     },
     { 
       key: "cube_135", 
-      name: "Cube.135", 
+      name: "모던 단독주택", 
       meshIndex: 5,
-      description: "문화 복합 공간입니다. 갤러리, 카페, 공연장이 어우러진 창의적인 건축물입니다."
+      description: "심플하고 세련된 디자인으로 완성된 감각적인 단독주택입니다."
     },
     { 
       key: "plane_043", 
-      name: "Plane.043", 
+      name: "스카이 아파트", 
       meshIndex: 6,
-      description: "평면형 전시관입니다. 넓은 개방감과 자연 채광이 돋보이는 공간입니다."
+      description: "하늘과 가장 가까운 곳에서 특별한 일상을 누리는 펜트하우스형 아파트입니다."
     },
     { 
       key: "plane_038", 
-      name: "Plane.038", 
+      name: "어반 빌라", 
       meshIndex: 7,
-      description: "야외 광장 구조물입니다. 사람들이 모여 소통하는 열린 공간을 제공합니다."
+      description: "도시적인 감성과 편리한 교통을 자랑하는 도심형 빌라입니다."
     },
     { 
       key: "cube_002", 
-      name: "Cube.002", 
+      name: "포레스트 단독주택", 
       meshIndex: 8,
-      description: "부티크 호텔입니다. 독특한 디자인과 프리미엄 서비스로 특별한 경험을 선사합니다."
+      description: "숲세권에 위치하여 맑은 공기와 피톤치드를 만끽할 수 있는 단독주택입니다."
     },
     { 
       key: "cube_004", 
-      name: "Cube.004", 
+      name: "노블레스 아파트", 
       meshIndex: 9,
-      description: "초대형 쇼핑몰입니다. 다양한 브랜드와 엔터테인먼트 시설이 집약된 메가 구조물입니다."
+      description: "최고급 자재와 품격 있는 커뮤니티 시설을 갖춘 럭셔리 아파트입니다."
     },
     { 
       key: "cube_035", 
-      name: "Cube.035", 
+      name: "하모니 빌라", 
       meshIndex: 10,
-      description: "연구 개발 센터입니다. 첨단 기술과 혁신이 이루어지는 미래지향적 건물입니다."
+      description: "이웃 간의 정이 넘치고 조용한 주거 환경을 제공하는 빌라입니다."
     },
     { 
       key: "cube_003", 
-      name: "Cube.003", 
+      name: "드림 단독주택", 
       meshIndex: 11,
-      description: "커뮤니티 센터입니다. 지역 주민들의 만남과 활동을 위한 따뜻한 공간입니다."
+      description: "당신이 꿈꾸던 나만의 공간을 실현할 수 있는 맞춤형 단독주택입니다."
     },
     { 
       key: "cube_039", 
-      name: "Cube.039", 
+      name: "센트럴 아파트", 
       meshIndex: 12,
-      description: "예술 작업실입니다. 창작자들의 영감과 작품이 탄생하는 창의적인 아틀리에입니다."
+      description: "도시의 중심에서 모든 인프라를 가깝게 누리는 대단지 아파트입니다."
     },
   ],
 
