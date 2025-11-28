@@ -2,7 +2,11 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
-export function Lights() {
+interface LightsProps {
+  isLightMode?: boolean;
+}
+
+export function Lights({ isLightMode = false }: LightsProps) {
   const accentLight1Ref = useRef<THREE.PointLight>(null);
   const accentLight2Ref = useRef<THREE.PointLight>(null);
   const timeRef = useRef(0);
@@ -19,26 +23,19 @@ export function Lights() {
     }
   });
 
+  // Adjust lighting based on mode
+  const ambientIntensity = isLightMode ? 0.8 : 0.3;
+  const directionalIntensity = isLightMode ? 1.5 : 2.5;
+
   return (
     <>
       {/* 앰비언트 라이트 */}
-      <ambientLight intensity={0.3} />
-
-      {/* 메인 포인트 라이트 */}
-      {/* <pointLight
-        position={[0, 2, 0]}
-        intensity={1}
-        distance={20}
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-        color={0xfff5e1}
-      /> */}
+      <ambientLight intensity={ambientIntensity} />
 
       {/* 방향성 조명 */}
       <directionalLight
         position={[5, 5, 5]}
-        intensity={2.5}
+        intensity={directionalIntensity}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}

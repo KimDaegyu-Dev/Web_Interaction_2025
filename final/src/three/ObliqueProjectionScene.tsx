@@ -8,11 +8,15 @@ import { GridHighlight } from "./components/Grid/GridHighlight";
 import { GridFloor } from "./components/Grid/GridFloor";
 import { InfiniteBackground } from "./components/Grid/InfiniteBackground";
 import { EdgeZoneIndicator } from "./components/EdgeZoneIndicator";
+import { RealtimeCursors } from "./components/RealtimeCursors";
+import { GlobalSwitchObject } from "./components/GlobalSwitchObject";
 import { useObliqueProjection } from "./hooks/useObliqueProjection";
 import { useObliqueControls } from "./hooks/useObliqueControls";
 import { useGridInteraction } from "./hooks/useGridInteraction";
 import { useProjectionControls } from "./hooks/useProjectionControls";
 import { useGridRaycasting } from "./hooks/useGridRaycasting";
+import { useRealtimeCursors } from "./hooks/useRealtimeCursors";
+import { useGlobalSwitch } from "./hooks/useGlobalSwitch";
 import { screenToGridCoords } from "./utils/raycasting";
 import { calculateObliqueMatrix } from "./utils/projection";
 import { GRID_CONFIG } from "./config/grid";
@@ -34,8 +38,14 @@ interface SceneProps {
 function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
   const gridHighlightGroupRef = useRef<THREE.Group>(null);
   const objectGroupRef = useRef<THREE.Group>(null);
+  const realtimeCursorsGroupRef = useRef<THREE.Group>(null);
   const { scene, camera, gl } = useThree();
 
+  // Real-time cursors
+  const { cursors, updateMyCursor } = useRealtimeCursors();
+
+  // Global switch
+  const { isLightMode, toggleSwitch } = useGlobalSwitch();
 
   // ObliqueControls 초기화 (패닝 & 줌)
   const { getPanOffset, getEdgeZone } = useObliqueControls();
@@ -66,19 +76,26 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
     return calculateObliqueMatrix(projectionParams, panOffset);
   }, [projectionParams, getPanOffset]);
 
-  // 그리드 레이캐스팅 (마우스 호버)
+  // 그리드 레이캐스팅 (마우스 호버) + 커서 업데이트
   useGridRaycasting({
     mousePosition,
     projectionParams,
     getPanOffset,
-    onCellPointerOver,
+    onCellPointerOver: (x, z) => {
+      onCellPointerOver(x, z);
+      // Update my cursor position in real-time
+      updateMyCursor(x, z);
+    },
     onCellPointerOut,
   });
 
-  // 배경색 설정
+  // 배경색 설정 (Light/Dark mode에 따라)
   useEffect(() => {
-    scene.background = new THREE.Color(GRID_CONFIG.COLORS.BACKGROUND);
-  }, [scene]);
+    const bgColor = isLightMode 
+      ? new THREE.Color(0xE8E8E8) // Light gray for light mode
+      : new THREE.Color(GRID_CONFIG.COLORS.BACKGROUND); // Dark for dark mode
+    scene.background = bgColor;
+  }, [scene, isLightMode]);
 
   // 클릭 이벤트 핸들러
   useEffect(() => {
@@ -93,10 +110,6 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
         gl,
         inverseMatrix,
       );
-
-
-
-// ... existing code ...
 
       if (gridCoords) {
         const syntheticEvent = {
@@ -126,26 +139,29 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
   // Oblique 투영 적용
   useObliqueProjection(gridHighlightGroupRef, projectionParams, getPanOffset);
   useObliqueProjection(objectGroupRef, projectionParams, getPanOffset);
-
-  // AxesHelper 추가
-  // useEffect(() => {
-  //   const axesHelper = new THREE.AxesHelper(2);
-  //   scene.add(axesHelper);
-  //   return () => {
-  //     scene.remove(axesHelper);
-  //     axesHelper.dispose();
-  //   };
-  // }, [scene]);
+  useObliqueProjection(realtimeCursorsGroupRef, projectionParams, getPanOffset);
 
   return (
     <>
       <ObliqueCamera />
-      <Lights />
+      <Lights isLightMode={isLightMode} />
 
-      {/* 그리드 강조 메시 */}
-      <group ref={gridHighlightGroupRef}>
+      {/* 그리드 강조 메시 - Hidden since we're using real-time cursor instead */}
+      {/* <group ref={gridHighlightGroupRef}>
         <GridHighlight
           hoveredCell={hoveredCell}
+        />
+      </group> */}
+
+      {/* Real-time cursors from all users (including me) */}
+      <group ref={realtimeCursorsGroupRef}>
+        <RealtimeCursors 
+          cursors={cursors} 
+          myCursor={hoveredCell ? { 
+            gridX: hoveredCell.x, 
+            gridZ: hoveredCell.z, 
+            color: "#FFFFFF" 
+          } : null}
         />
       </group>
 
@@ -160,6 +176,13 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
           clickedObjectId={clickedObjectId}
           onObjectClick={onObjectClick}
           onRequestStateChange={setObjectState}
+        />
+        
+        {/* Global Light Switch - positioned at corner of grid */}
+        <GlobalSwitchObject
+          position={[-10, 0, -10]}
+          isLightMode={isLightMode}
+          onToggle={toggleSwitch}
         />
       </group>
     </>

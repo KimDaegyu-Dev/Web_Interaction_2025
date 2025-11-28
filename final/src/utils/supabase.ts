@@ -29,8 +29,6 @@ export interface BuildingData {
   updated_at?: string;
 }
 
-
-
 export interface InsertBuildingData {
   position_x: number;
   position_y: number;
@@ -44,4 +42,19 @@ export interface InsertBuildingData {
   password: string;
 }
 
+// 실시간 커서 데이터 타입
+export interface CursorData {
+  id: string;
+  user_id: string;
+  grid_x: number;
+  grid_z: number;
+  color: string;
+  updated_at: string;
+}
 
+// 공용 스위치 상태 타입
+export interface GlobalSwitchData {
+  id: string;
+  is_light_mode: boolean;
+  updated_at: string;
+}
