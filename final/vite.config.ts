@@ -40,7 +40,7 @@ export default defineConfig({
   },
   base: "/Web_Interaction_2025/week13/",
   build: {
-    outDir: "../docs/week13",
+    outDir: "../docs/week14",
     assetsDir: "assets",
     sourcemap: true,
     minify: true,
