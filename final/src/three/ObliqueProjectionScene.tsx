@@ -150,7 +150,7 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
       </group>
 
       {/* Infinite Background rendered via Shader - Outside of transformed group */}
-      <InfiniteBackground />
+      <InfiniteBackground objects={objects} />
 
       {/* 오브젝트들 - Oblique 투영 적용 */}
       <group ref={objectGroupRef}>

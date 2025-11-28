@@ -10,12 +10,12 @@ export default defineConfig({
       babel: {
         plugins: [
           // other Babel plugins
-          [
-            "@locator/babel-jsx/dist",
-            {
-              env: "development",
-            },
-          ],
+          // [
+          //   "@locator/babel-jsx/dist",
+          //   {
+          //     env: "development",
+          //   },
+          // ],
         ],
       },
     }),

@@ -1,17 +1,11 @@
-import { useTexture } from "@react-three/drei";
 import { useThree, useFrame } from "@react-three/fiber";
-import { useMemo, useRef, useLayoutEffect } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import * as THREE from "three";
 import { calculateObliqueMatrix } from "../../utils/projection";
 import { useProjectionControls } from "../../hooks/useProjectionControls";
 import { useObliqueControls } from "../../hooks/useObliqueControls";
 import { GRID_CONFIG } from "../../config/grid";
 
-const GROUND_TEXTURES = [
-  "./texture/ground_tile1.jpg",
-  "./texture/ground_tile2.jpg",
-  "./texture/ground_tile3.jpg",
-];
 
 const vertexShader = `
 varying vec2 vUv;
@@ -25,25 +19,59 @@ void main() {
 const fragmentShader = `
 precision highp float;
 
-uniform sampler2D uTexture0;
-uniform sampler2D uTexture1;
-uniform sampler2D uTexture2;
 uniform mat4 uInverseViewProj;
 uniform mat4 uInverseOblique;
 uniform float uGridSize;
+uniform float uTime;
+uniform vec3 uBuildingPositions[50]; // Max 50 buildings
+uniform int uBuildingCount;
 
 varying vec2 vUv;
 
-// Simple pseudo-random hash function
-float hash(vec2 p) {
-  return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+// Smooth gradient colors (deep blue to purple to pink)
+vec3 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist) {
+  float dist = length(worldPos - centerPos) / maxDist;
+  
+  // Define color palette
+  vec3 color1 = vec3(0.15, 0.2, 0.45);   // Bright blue-purple (center)
+  vec3 color2 = vec3(0.25, 0.15, 0.5);   // Bright purple
+  vec3 color3 = vec3(0.2, 0.1, 0.4);     // Purple
+  vec3 color4 = vec3(0.1, 0.15, 0.35);   // Deep blue (edge)
+  
+  // Create radial gradient with smooth falloff
+  vec3 color;
+  
+  if (dist < 0.3) {
+    color = mix(color1, color2, smoothstep(0.0, 0.3, dist));
+  } else if (dist < 0.6) {
+    color = mix(color2, color3, smoothstep(0.3, 0.6, dist));
+  } else {
+    color = mix(color3, color4, smoothstep(0.6, 1.0, dist));
+  }
+  
+  // Add subtle animated waves
+  float wave = sin(worldPos.x * 0.15 + uTime * 0.5) * 0.5 + 0.5;
+  wave *= sin(worldPos.y * 0.15 + uTime * 0.3) * 0.5 + 0.5;
+  color += vec3(0.02, 0.01, 0.03) * wave;
+  
+  // Smooth falloff at edges
+  float falloff = 1.0 - smoothstep(0.5, 1.0, dist);
+  
+  return color * falloff;
+}
+
+// Grid line function with anti-aliasing
+float gridLine(vec2 pos, float lineWidth) {
+  vec2 grid = abs(fract(pos - 0.5) - 0.5) / fwidth(pos);
+  float line = min(grid.x, grid.y);
+  return 1.0 - min(line / lineWidth, 1.0);
 }
 
 void main() {
   // 1. NDC Coordinates
   vec2 ndc = vUv * 2.0 - 1.0;
 
-  // 2. Unproject to Distorted World Space (Ray Origin at Near Plane)
+  // 2. Unproject to Distorted World Space
   vec4 ndcNear = vec4(ndc, -1.0, 1.0);
   vec4 ndcFar = vec4(ndc, 1.0, 1.0);
 
@@ -57,91 +85,129 @@ void main() {
   vec3 rayDir = normalize(worldFar.xyz - worldNear.xyz);
 
   // 3. Transform Ray to Real World Space
-  // Transform Point (w=1)
   vec4 realOrigin4 = uInverseOblique * vec4(rayOrigin, 1.0);
   vec3 realOrigin = realOrigin4.xyz / realOrigin4.w;
 
-  // Transform Vector (w=0) - direction only
   vec4 realDir4 = uInverseOblique * vec4(rayDir, 0.0);
   vec3 realDir = normalize(realDir4.xyz);
 
   // 4. Intersect with Plane Y=0
-  // t = (planeY - origin.y) / dir.y
-  
   float t = -realOrigin.y / realDir.y;
   
-  // If looking away from plane or parallel
   if (t < 0.0) discard;
   
   vec3 intersectPoint = realOrigin + realDir * t;
   
-  // 5. Sample Texture
-  // Grid coordinates are x, z.
-  vec2 uv = intersectPoint.xz / uGridSize;
+  // 5. Create beautiful gradient background around each building
+  vec2 worldPos = intersectPoint.xz;
   
-  // Determine cell index for random texture selection
-  vec2 cellIndex = floor(uv);
-  vec2 cellUv = fract(uv);
+  // Base dark background
+  vec3 baseColor = vec3(0.08, 0.1, 0.25);
+  vec3 finalGradient = baseColor;
   
-  float rnd = hash(cellIndex);
+  // Add gradient for each building position
+  float maxInfluenceRadius = 20.0; // How far each building's gradient extends
   
-  vec4 color;
-  if (rnd < 0.33) {
-    color = texture2D(uTexture0, cellUv);
-  } else if (rnd < 0.66) {
-    color = texture2D(uTexture1, cellUv);
-  } else {
-    color = texture2D(uTexture2, cellUv);
+  for (int i = 0; i < 50; i++) {
+    if (i >= uBuildingCount) break;
+    
+    vec2 buildingPos = uBuildingPositions[i].xz;
+    vec3 gradient = getGradientColor(worldPos, buildingPos, maxInfluenceRadius);
+    
+    // Blend gradients additively
+    finalGradient += gradient;
   }
   
-  gl_FragColor = color;
+  // Clamp to prevent over-brightening
+  finalGradient = min(finalGradient, vec3(0.5, 0.5, 0.7));
+  
+  // 6. Add subtle grid lines
+  vec2 gridUv = worldPos / uGridSize * 2.0;
+  float grid = gridLine(gridUv, 1.5);
+  
+  // Grid color with subtle glow
+  vec3 gridColor = vec3(0.3, 0.4, 0.6);
+  
+  // Distance-based fade for grid (fade based on nearest building)
+  float minDistToBuilding = 1000.0;
+  for (int i = 0; i < 50; i++) {
+    if (i >= uBuildingCount) break;
+    vec2 buildingPos = uBuildingPositions[i].xz;
+    minDistToBuilding = min(minDistToBuilding, length(worldPos - buildingPos));
+  }
+  
+  float distFade = 1.0 - smoothstep(5.0, 30.0, minDistToBuilding);
+  grid *= distFade * 0.2; // Subtle grid near buildings
+  
+  // Combine gradient and grid
+  vec3 finalColor = finalGradient + gridColor * grid;
+  
+  // Add slight vignette effect
+  float vignette = 1.0 - length(vUv - 0.5) * 0.3;
+  finalColor *= vignette;
+  
+  gl_FragColor = vec4(finalColor, 1.0);
 }
 `;
 
-export function InfiniteBackground() {
-  const textures = useTexture(GROUND_TEXTURES);
-  const { camera } = useThree();
+interface InfiniteBackgroundProps {
+  objects?: Array<{
+    position: [number, number, number];
+  }>;
+}
+
+export function InfiniteBackground({ objects = [] }: InfiniteBackgroundProps) {
+  const { camera, clock } = useThree();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   
   // Controls for Oblique Matrix
   const projectionParams = useProjectionControls();
   const { getPanOffset } = useObliqueControls();
 
-  // Setup texture
-  useLayoutEffect(() => {
-    textures.forEach(t => {
-      t.wrapS = THREE.RepeatWrapping;
-      t.wrapT = THREE.RepeatWrapping;
-      t.colorSpace = THREE.SRGBColorSpace;
-    });
-  }, [textures]);
-
   const uniforms = useMemo(
     () => ({
-      uTexture0: { value: textures[0] },
-      uTexture1: { value: textures[1] },
-      uTexture2: { value: textures[2] },
       uInverseViewProj: { value: new THREE.Matrix4() },
       uInverseOblique: { value: new THREE.Matrix4() },
       uGridSize: { value: GRID_CONFIG.CELL_SIZE },
+      uTime: { value: 0 },
+      uBuildingPositions: { value: new Array(50).fill(new THREE.Vector3(0, 0, 0)) },
+      uBuildingCount: { value: 0 },
     }),
-    [textures]
+    []
   );
 
   // Temporary objects to avoid GC
   const tempMatrix = useMemo(() => new THREE.Matrix4(), []);
 
+  // Update building positions when objects change
+  useEffect(() => {
+    if (!materialRef.current) return;
+    
+    const positions = objects.slice(0, 50).map(obj => 
+      new THREE.Vector3(obj.position[0], obj.position[1], obj.position[2])
+    );
+    
+    // Fill remaining slots with zeros
+    while (positions.length < 50) {
+      positions.push(new THREE.Vector3(0, 0, 0));
+    }
+    
+    materialRef.current.uniforms.uBuildingPositions.value = positions;
+    materialRef.current.uniforms.uBuildingCount.value = Math.min(objects.length, 50);
+  }, [objects]);
+
   useFrame(() => {
     if (!materialRef.current) return;
 
+    // Update time for animation
+    materialRef.current.uniforms.uTime.value = clock.getElapsedTime();
+
     // 1. Calculate Inverse ViewProjection Matrix
-    // Inverse(Proj * View) = Inverse(View) * Inverse(Proj) = World * ProjInv
     tempMatrix.copy(camera.matrixWorld).multiply(camera.projectionMatrixInverse);
     materialRef.current.uniforms.uInverseViewProj.value.copy(tempMatrix);
     
     // 2. Calculate Inverse Oblique Matrix
     const panOffset = getPanOffset();
-    // calculateObliqueMatrix returns a new matrix, unavoidable
     const obliqueMatrix = calculateObliqueMatrix(projectionParams, panOffset);
     tempMatrix.copy(obliqueMatrix).invert();
     materialRef.current.uniforms.uInverseOblique.value.copy(tempMatrix);
@@ -161,3 +227,4 @@ export function InfiniteBackground() {
     </mesh>
   );
 }
+
