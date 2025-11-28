@@ -1,4 +1,4 @@
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { CursorData } from "@/utils/supabase";
@@ -70,6 +70,13 @@ function CursorLight({ gridX, gridZ, color, isMe }: CursorLightProps) {
   }), [color, isMe]);
 
   // Cleanup materials on unmount
+  useEffect(() => {
+    return () => {
+      materials.sphere.dispose();
+      materials.ring.dispose();
+    };
+  }, [materials]);
+
   useFrame(({ clock }) => {
     if (lightRef.current) {
       const pulse = Math.sin(clock.getElapsedTime() * (isMe ? 4 : 3)) * 0.3 + 0.7;

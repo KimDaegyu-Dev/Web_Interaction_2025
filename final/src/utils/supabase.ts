@@ -6,7 +6,7 @@ export const supabase = createClient(
   {
     realtime: {
       params: {
-        eventsPerSecond: 10,
+        eventsPerSecond: 2, // Reduced from 10 to match RxJS throttle (500ms)
       },
     },
   },

@@ -105,39 +105,44 @@ void main() {
   vec3 baseColor = vec3(0.08, 0.1, 0.25);
   vec3 finalGradient = baseColor;
   
-  // Add gradient for each building position
+  // OPTIMIZED: Single loop for both gradient and distance calculation
   float maxInfluenceRadius = 20.0; // How far each building's gradient extends
+  float minDistToBuilding = 1000.0;
   
-  for (int i = 0; i < 50; i++) {
-    if (i >= uBuildingCount) break;
-    
-    vec2 buildingPos = uBuildingPositions[i].xz;
-    vec3 gradient = getGradientColor(worldPos, buildingPos, maxInfluenceRadius);
-    
-    // Blend gradients additively
-    finalGradient += gradient;
+  // Early exit if no buildings
+  if (uBuildingCount > 0) {
+    for (int i = 0; i < 50; i++) {
+      if (i >= uBuildingCount) break;
+      
+      vec2 buildingPos = uBuildingPositions[i].xz;
+      float distToBuilding = length(worldPos - buildingPos);
+      
+      // Track minimum distance for grid fade
+      minDistToBuilding = min(minDistToBuilding, distToBuilding);
+      
+      // Only calculate gradient if within influence radius (early exit optimization)
+      if (distToBuilding < maxInfluenceRadius) {
+        vec3 gradient = getGradientColor(worldPos, buildingPos, maxInfluenceRadius);
+        finalGradient += gradient;
+      }
+    }
   }
   
   // Clamp to prevent over-brightening
   finalGradient = min(finalGradient, vec3(0.5, 0.5, 0.7));
   
-  // 6. Add subtle grid lines
-  vec2 gridUv = worldPos / uGridSize * 2.0;
-  float grid = gridLine(gridUv, 1.5);
+  // 6. Add subtle grid lines (only near buildings for performance)
+  float grid = 0.0;
+  float distFade = 1.0 - smoothstep(5.0, 30.0, minDistToBuilding);
+  
+  // Only calculate grid if near buildings
+  if (distFade > 0.01) {
+    vec2 gridUv = worldPos / uGridSize * 2.0;
+    grid = gridLine(gridUv, 1.5) * distFade * 0.2;
+  }
   
   // Grid color with subtle glow
   vec3 gridColor = vec3(0.3, 0.4, 0.6);
-  
-  // Distance-based fade for grid (fade based on nearest building)
-  float minDistToBuilding = 1000.0;
-  for (int i = 0; i < 50; i++) {
-    if (i >= uBuildingCount) break;
-    vec2 buildingPos = uBuildingPositions[i].xz;
-    minDistToBuilding = min(minDistToBuilding, length(worldPos - buildingPos));
-  }
-  
-  float distFade = 1.0 - smoothstep(5.0, 30.0, minDistToBuilding);
-  grid *= distFade * 0.2; // Subtle grid near buildings
   
   // Combine gradient and grid
   vec3 finalColor = finalGradient + gridColor * grid;
@@ -178,6 +183,7 @@ export function InfiniteBackground({ objects = [] }: InfiniteBackgroundProps) {
 
   // Temporary objects to avoid GC
   const tempMatrix = useMemo(() => new THREE.Matrix4(), []);
+  const tempObliqueMatrix = useMemo(() => new THREE.Matrix4(), []);
 
   // Update building positions when objects change
   useEffect(() => {
@@ -202,15 +208,15 @@ export function InfiniteBackground({ objects = [] }: InfiniteBackgroundProps) {
     // Update time for animation
     materialRef.current.uniforms.uTime.value = clock.getElapsedTime();
 
-    // 1. Calculate Inverse ViewProjection Matrix
+    // 1. Calculate Inverse ViewProjection Matrix (camera changes every frame)
     tempMatrix.copy(camera.matrixWorld).multiply(camera.projectionMatrixInverse);
     materialRef.current.uniforms.uInverseViewProj.value.copy(tempMatrix);
     
-    // 2. Calculate Inverse Oblique Matrix
+    // 2. Calculate Inverse Oblique Matrix (panOffset changes when camera moves)
     const panOffset = getPanOffset();
     const obliqueMatrix = calculateObliqueMatrix(projectionParams, panOffset);
-    tempMatrix.copy(obliqueMatrix).invert();
-    materialRef.current.uniforms.uInverseOblique.value.copy(tempMatrix);
+    tempObliqueMatrix.copy(obliqueMatrix).invert();
+    materialRef.current.uniforms.uInverseOblique.value.copy(tempObliqueMatrix);
   });
 
   return (

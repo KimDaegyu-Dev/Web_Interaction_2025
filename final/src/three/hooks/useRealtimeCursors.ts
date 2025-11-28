@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase, type CursorData } from "@/utils/supabase";
 import { RealtimeChannel } from "@supabase/supabase-js";
+import { Subject } from "rxjs";
+import { throttleTime } from "rxjs/operators";
 
 // Generate a unique user ID for this session
 const generateUserId = () => {
@@ -25,49 +27,65 @@ const generateCursorColor = () => {
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
+interface CursorUpdate {
+  gridX: number;
+  gridZ: number;
+}
+
 export function useRealtimeCursors() {
   const [cursors, setCursors] = useState<Map<string, CursorData>>(new Map());
   const [myCursorPosition, setMyCursorPosition] = useState<{ gridX: number; gridZ: number } | null>(null);
   const [myUserId] = useState(() => generateUserId());
   const [myColor] = useState(() => generateCursorColor());
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const lastUpdateRef = useRef<number>(0);
-  const updateThrottleMs = 100; // Throttle updates to 10 per second
+  
+  // RxJS Subject for cursor updates
+  const cursorUpdateSubject = useRef<Subject<CursorUpdate>>(new Subject());
+
+  // Setup RxJS throttling
+  useEffect(() => {
+    const subscription = cursorUpdateSubject.current
+      .pipe(
+        throttleTime(500, undefined, { leading: true, trailing: true }) // 500ms throttle (2 updates/sec)
+      )
+      .subscribe(async ({ gridX, gridZ }) => {
+        try {
+          const { error } = await supabase.from("cursors").upsert(
+            {
+              user_id: myUserId,
+              grid_x: gridX,
+              grid_z: gridZ,
+              color: myColor,
+              updated_at: new Date().toISOString(),
+            },
+            {
+              onConflict: "user_id",
+            }
+          );
+
+          if (error) {
+            console.error("Error updating cursor:", error);
+          }
+        } catch (err) {
+          console.error("Failed to update cursor:", err);
+        }
+      });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [myUserId, myColor]);
 
   // Update my cursor position
   const updateMyCursor = useCallback(
-    async (gridX: number, gridZ: number) => {
+    (gridX: number, gridZ: number) => {
       // Update local state immediately for responsive UI
       setMyCursorPosition({ gridX, gridZ });
 
-      const now = Date.now();
-      if (now - lastUpdateRef.current < updateThrottleMs) {
-        return; // Throttle updates
-      }
-      lastUpdateRef.current = now;
-
-      try {
-        const { error } = await supabase.from("cursors").upsert(
-          {
-            user_id: myUserId,
-            grid_x: gridX,
-            grid_z: gridZ,
-            color: myColor,
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: "user_id",
-          }
-        );
-
-        if (error) {
-          console.error("Error updating cursor:", error);
-        }
-      } catch (err) {
-        console.error("Failed to update cursor:", err);
-      }
+      // Emit to RxJS subject for throttled network update
+      cursorUpdateSubject.current.next({ gridX, gridZ });
     },
-    [myUserId, myColor]
+    []
   );
 
   // Subscribe to cursor updates
