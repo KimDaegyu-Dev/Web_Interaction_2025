@@ -25,6 +25,10 @@ uniform float uGridSize;
 uniform float uTime;
 uniform vec3 uBuildingPositions[50]; // Max 50 buildings
 uniform int uBuildingCount;
+uniform vec3 uCursorPositions[50]; // Max 50 cursors
+uniform int uCursorCount;
+uniform int uLightMode; // 0 = buildings, 1 = cursors
+uniform float uInfluenceRadius; // Cursor/building influence radius
 
 varying vec2 vUv;
 
@@ -98,7 +102,7 @@ void main() {
   
   vec3 intersectPoint = realOrigin + realDir * t;
   
-  // 5. Create beautiful gradient background around each building
+  // 5. Create beautiful gradient background
   vec2 worldPos = intersectPoint.xz;
   
   // Base dark background
@@ -106,23 +110,26 @@ void main() {
   vec3 finalGradient = baseColor;
   
   // OPTIMIZED: Single loop for both gradient and distance calculation
-  float maxInfluenceRadius = 20.0; // How far each building's gradient extends
-  float minDistToBuilding = 1000.0;
+  float maxInfluenceRadius = uInfluenceRadius; // Use shared config value
+  float minDistToLight = 1000.0;
   
-  // Early exit if no buildings
-  if (uBuildingCount > 0) {
+  // Choose which positions to use based on light mode
+  int count = uLightMode == 0 ? uBuildingCount : uCursorCount;
+  
+  // Early exit if no light sources
+  if (count > 0) {
     for (int i = 0; i < 50; i++) {
-      if (i >= uBuildingCount) break;
+      if (i >= count) break;
       
-      vec2 buildingPos = uBuildingPositions[i].xz;
-      float distToBuilding = length(worldPos - buildingPos);
+      vec2 lightPos = uLightMode == 0 ? uBuildingPositions[i].xz : uCursorPositions[i].xz;
+      float distToLight = length(worldPos - lightPos);
       
       // Track minimum distance for grid fade
-      minDistToBuilding = min(minDistToBuilding, distToBuilding);
+      minDistToLight = min(minDistToLight, distToLight);
       
       // Only calculate gradient if within influence radius (early exit optimization)
-      if (distToBuilding < maxInfluenceRadius) {
-        vec3 gradient = getGradientColor(worldPos, buildingPos, maxInfluenceRadius);
+      if (distToLight < maxInfluenceRadius) {
+        vec3 gradient = getGradientColor(worldPos, lightPos, maxInfluenceRadius);
         finalGradient += gradient;
       }
     }
@@ -131,11 +138,11 @@ void main() {
   // Clamp to prevent over-brightening
   finalGradient = min(finalGradient, vec3(0.5, 0.5, 0.7));
   
-  // 6. Add subtle grid lines (only near buildings for performance)
+  // 6. Add subtle grid lines (only near light sources for performance)
   float grid = 0.0;
-  float distFade = 1.0 - smoothstep(5.0, 30.0, minDistToBuilding);
+  float distFade = 1.0 - smoothstep(5.0, 30.0, minDistToLight);
   
-  // Only calculate grid if near buildings
+  // Only calculate grid if near light sources
   if (distFade > 0.01) {
     vec2 gridUv = worldPos / uGridSize * 2.0;
     grid = gridLine(gridUv, 1.5) * distFade * 0.2;
@@ -159,9 +166,23 @@ interface InfiniteBackgroundProps {
   objects?: Array<{
     position: [number, number, number];
   }>;
+  cursors?: Array<{
+    grid_x: number;
+    grid_z: number;
+  }>;
+  myCursor?: {
+    gridX: number;
+    gridZ: number;
+  } | null;
+  lightMode?: "buildings" | "cursors";
 }
 
-export function InfiniteBackground({ objects = [] }: InfiniteBackgroundProps) {
+export function InfiniteBackground({ 
+  objects = [], 
+  cursors = [], 
+  myCursor = null,
+  lightMode = "buildings" 
+}: InfiniteBackgroundProps) {
   const { camera, clock } = useThree();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   
@@ -177,6 +198,10 @@ export function InfiniteBackground({ objects = [] }: InfiniteBackgroundProps) {
       uTime: { value: 0 },
       uBuildingPositions: { value: new Array(50).fill(new THREE.Vector3(0, 0, 0)) },
       uBuildingCount: { value: 0 },
+      uCursorPositions: { value: new Array(50).fill(new THREE.Vector3(0, 0, 0)) },
+      uCursorCount: { value: 0 },
+      uLightMode: { value: 0 }, // 0 = buildings, 1 = cursors
+      uInfluenceRadius: { value: GRID_CONFIG.CURSOR_INFLUENCE_RADIUS },
     }),
     []
   );
@@ -201,6 +226,35 @@ export function InfiniteBackground({ objects = [] }: InfiniteBackgroundProps) {
     materialRef.current.uniforms.uBuildingPositions.value = positions;
     materialRef.current.uniforms.uBuildingCount.value = Math.min(objects.length, 50);
   }, [objects]);
+
+  // Update cursor positions when cursors or myCursor change
+  useEffect(() => {
+    if (!materialRef.current) return;
+    
+    // Combine all cursors (other users + my cursor)
+    const allCursors = [...cursors];
+    if (myCursor) {
+      allCursors.push({ grid_x: myCursor.gridX, grid_z: myCursor.gridZ });
+    }
+    
+    const positions = allCursors.slice(0, 50).map(cursor => 
+      new THREE.Vector3(cursor.grid_x, 0, cursor.grid_z)
+    );
+    
+    // Fill remaining slots with zeros
+    while (positions.length < 50) {
+      positions.push(new THREE.Vector3(0, 0, 0));
+    }
+    
+    materialRef.current.uniforms.uCursorPositions.value = positions;
+    materialRef.current.uniforms.uCursorCount.value = Math.min(allCursors.length, 50);
+  }, [cursors, myCursor]);
+
+  // Update light mode
+  useEffect(() => {
+    if (!materialRef.current) return;
+    materialRef.current.uniforms.uLightMode.value = lightMode === "buildings" ? 0 : 1;
+  }, [lightMode]);
 
   useFrame(() => {
     if (!materialRef.current) return;

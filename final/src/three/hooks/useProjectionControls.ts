@@ -48,6 +48,11 @@ export function useProjectionControls() {
         max: 2,
         step: 0.01,
       },
+      backgroundLightMode: {
+        value: "buildings" as "buildings" | "cursors",
+        options: ["buildings", "cursors"],
+        label: "Background Light",
+      },
     },
     { render: () => debugMode },
   ) as ProjectionParams;

@@ -166,16 +166,29 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
       </group>
 
       {/* Infinite Background rendered via Shader - Outside of transformed group */}
-      <InfiniteBackground objects={objects} />
+      <InfiniteBackground 
+        objects={objects} 
+        cursors={cursors}
+        myCursor={hoveredCell ? { 
+          gridX: hoveredCell.x, 
+          gridZ: hoveredCell.z 
+        } : null}
+        lightMode={projectionParams.backgroundLightMode}
+      />
 
       {/* 오브젝트들 - Oblique 투영 적용 */}
       <group ref={objectGroupRef}>
-        <GridFloor objects={objects} />
+        {/* <GridFloor objects={objects} /> */}
         <InteractiveDisplayObjects
           objects={objects}
           clickedObjectId={clickedObjectId}
           onObjectClick={onObjectClick}
           onRequestStateChange={setObjectState}
+          cursors={cursors}
+          myCursor={hoveredCell ? {
+            gridX: hoveredCell.x,
+            gridZ: hoveredCell.z
+          } : null}
         />
         
         {/* Global Light Switch - positioned at corner of grid */}

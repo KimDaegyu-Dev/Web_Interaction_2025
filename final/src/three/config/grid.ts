@@ -13,4 +13,6 @@ export const GRID_CONFIG = {
   OPACITY: {
     DEFAULT: 0.7,
   },
+  // Cursor influence radius (used for background gradient and building visibility)
+  CURSOR_INFLUENCE_RADIUS: 20.0,
 } as const;

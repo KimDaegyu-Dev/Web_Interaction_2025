@@ -4,12 +4,18 @@ import type { PlacedObject } from "../../hooks/useGridInteraction";
 import { StatefulModelInstance } from "../../objectSystem/StatefulModelInstance";
 import { getModelDefinition } from "../../objectSystem/modelLibrary";
 import type { ObjectStateKey } from "../../objectSystem/modelLibrary";
+import type { CursorData } from "@/utils/supabase";
 
 interface InteractiveDisplayObjectsProps {
   objects?: PlacedObject[];
   clickedObjectId?: string | null;
   onObjectClick?: (e: ThreeEvent<MouseEvent>, buildingId: string) => void;
   onRequestStateChange?: (id: string, nextState: ObjectStateKey) => void;
+  cursors?: CursorData[];
+  myCursor?: {
+    gridX: number;
+    gridZ: number;
+  } | null;
 }
 
 export function InteractiveDisplayObjects({
@@ -17,6 +23,8 @@ export function InteractiveDisplayObjects({
   clickedObjectId,
   onObjectClick,
   onRequestStateChange,
+  cursors = [],
+  myCursor = null,
 }: InteractiveDisplayObjectsProps) {
   return (
     <>
@@ -36,6 +44,8 @@ export function InteractiveDisplayObjects({
               definition={definition}
               onClick={onObjectClick}
               onRequestStateChange={onRequestStateChange}
+              cursors={cursors}
+              myCursor={myCursor}
             />
             {isClicked && (
               <BuildingTooltip

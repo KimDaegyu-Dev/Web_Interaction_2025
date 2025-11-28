@@ -11,12 +11,19 @@ import type {
 import { modelCache } from "./ModelCache";
 import type { SceneObjectInstance } from "../hooks/usePlacedObjects";
 import { MODEL_CONFIG } from "../config/models";
+import { GRID_CONFIG } from "../config/grid";
+import type { CursorData } from "@/utils/supabase";
 
 interface StatefulModelInstanceProps {
   instance: SceneObjectInstance;
   definition: ModelDefinition;
   onRequestStateChange?: (id: string, nextState: ObjectStateKey) => void;
   onClick?: (e: ThreeEvent<MouseEvent>, id: string) => void;
+  cursors?: CursorData[];
+  myCursor?: {
+    gridX: number;
+    gridZ: number;
+  } | null;
 }
 
 function resolveAnimationBinding(
@@ -41,6 +48,8 @@ export const StatefulModelInstance = memo(function StatefulModelInstance({
   definition,
   onRequestStateChange,
   onClick,
+  cursors = [],
+  myCursor = null,
 }: StatefulModelInstanceProps) {
   const gltf = useGLTF(definition.url);
   
@@ -126,6 +135,45 @@ export const StatefulModelInstance = memo(function StatefulModelInstance({
   const activeActionRef = useRef<THREE.AnimationAction | null>(null);
   const currentStateRef = useRef<ObjectStateKey>(instance.state);
 
+  // Calculate if building should be visible based on cursor distance
+  const shouldRender = useMemo(() => {
+    // Combine all cursor positions
+    const allCursorPositions: { x: number; z: number }[] = [];
+    
+    // Add other users' cursors
+    cursors.forEach(cursor => {
+      allCursorPositions.push({ x: cursor.grid_x, z: cursor.grid_z });
+    });
+    
+    // Add my cursor
+    if (myCursor) {
+      allCursorPositions.push({ x: myCursor.gridX, z: myCursor.gridZ });
+    }
+
+    // If no cursors, don't render
+    if (allCursorPositions.length === 0) {
+      return false;
+    }
+
+    // Calculate minimum distance to any cursor
+    const buildingX = instance.position[0];
+    const buildingZ = instance.position[2];
+    const influenceRadius = GRID_CONFIG.CURSOR_INFLUENCE_RADIUS;
+
+    for (const cursor of allCursorPositions) {
+      const dx = buildingX - cursor.x;
+      const dz = buildingZ - cursor.z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+      
+      // If within range of any cursor, render
+      if (distance <= influenceRadius - 6) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [cursors, myCursor, instance.position]);
+
   useEffect(() => {
     if (!actions) return;
 
@@ -178,6 +226,11 @@ export const StatefulModelInstance = memo(function StatefulModelInstance({
       mixer.update(delta);
     }
   });
+
+  // Don't render if outside cursor influence range
+  if (!shouldRender) {
+    return null;
+  }
 
   return (
     <group

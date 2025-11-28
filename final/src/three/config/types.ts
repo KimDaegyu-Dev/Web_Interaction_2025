@@ -6,6 +6,7 @@ export interface ProjectionParams {
   scaleX: number;
   scaleY: number;
   scaleZ: number;
+  backgroundLightMode: "buildings" | "cursors";
 }
 
 // 프리셋 타입
