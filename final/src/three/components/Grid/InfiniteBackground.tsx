@@ -1,4 +1,3 @@
-import { useTexture } from "@react-three/drei";
 import { useThree, useFrame } from "@react-three/fiber";
 import { useMemo, useRef, useLayoutEffect } from "react";
 import * as THREE from "three";
@@ -6,157 +5,159 @@ import { calculateObliqueMatrix } from "../../utils/projection";
 import { useProjectionControls } from "../../hooks/useProjectionControls";
 import { useObliqueControls } from "../../hooks/useObliqueControls";
 import { GRID_CONFIG } from "../../config/grid";
+import { jigsawFunctions } from "../../shaders/jigsaw.glsl";
+import type { PlacedObject } from "../../hooks/useGridInteraction";
 
-const GROUND_TEXTURES = [
-  "./texture/ground_tile1.jpg",
-  "./texture/ground_tile2.jpg",
-  "./texture/ground_tile3.jpg",
-];
-
+// 1. Vertex Shader: 복잡한 역변환 없이 월드 좌표를 바로 넘겨줍니다.
 const vertexShader = `
-varying vec2 vUv;
+varying vec2 vWorldPos; // x, z 좌표만 있으면 됨
+
 void main() {
-  vUv = uv;
-  // Force full-screen quad at far plane (z=0.999 in NDC)
-  gl_Position = vec4(position.xy, 0.999, 1.0);
+  // Use local position for pattern generation to avoid oblique distortion
+  // Mesh is on XY plane, and we map Mesh Y -> World Z via matrix swapping
+  // So position.xy corresponds to World XZ
+  vWorldPos = position.xy;
+  
+  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
 }
 `;
 
+// 2. Fragment Shader: 레이캐스팅 로직 제거
 const fragmentShader = `
-precision highp float;
+precision mediump float;
 
-uniform sampler2D uTexture0;
-uniform sampler2D uTexture1;
-uniform sampler2D uTexture2;
-uniform mat4 uInverseViewProj;
-uniform mat4 uInverseOblique;
 uniform float uGridSize;
+uniform vec2 uHoveredWorldPos;
 
-varying vec2 vUv;
+varying vec2 vWorldPos;
 
-// Simple pseudo-random hash function
-float hash(vec2 p) {
-  return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
-}
+${jigsawFunctions}
 
 void main() {
-  // 1. NDC Coordinates
-  vec2 ndc = vUv * 2.0 - 1.0;
-
-  // 2. Unproject to Distorted World Space (Ray Origin at Near Plane)
-  vec4 ndcNear = vec4(ndc, -1.0, 1.0);
-  vec4 ndcFar = vec4(ndc, 1.0, 1.0);
-
-  vec4 worldNear = uInverseViewProj * ndcNear;
-  vec4 worldFar = uInverseViewProj * ndcFar;
-
-  worldNear /= worldNear.w;
-  worldFar /= worldFar.w;
-
-  vec3 rayOrigin = worldNear.xyz;
-  vec3 rayDir = normalize(worldFar.xyz - worldNear.xyz);
-
-  // 3. Transform Ray to Real World Space
-  // Transform Point (w=1)
-  vec4 realOrigin4 = uInverseOblique * vec4(rayOrigin, 1.0);
-  vec3 realOrigin = realOrigin4.xyz / realOrigin4.w;
-
-  // Transform Vector (w=0) - direction only
-  vec4 realDir4 = uInverseOblique * vec4(rayDir, 0.0);
-  vec3 realDir = normalize(realDir4.xyz);
-
-  // 4. Intersect with Plane Y=0
-  // t = (planeY - origin.y) / dir.y
+  // Raycasting 로직 삭제됨 -> vWorldPos 바로 사용
   
-  float t = -realOrigin.y / realDir.y;
+  // 1. Jigsaw Pattern
+  vec2 uv = vWorldPos / uGridSize;
   
-  // If looking away from plane or parallel
-  if (t < 0.0) discard;
+  // Get piece ID and distance to edge
+  vec3 jig = jigsaw(uv);
+  vec2 pieceID = jig.xy;
+  float dist = jig.z;
   
-  vec3 intersectPoint = realOrigin + realDir * t;
+  // Pastel Colors (Fabrice's palette from user code)
+  // h21 is defined in jigsawFunctions
+  vec3 baseColor = .8 + .2*cos(6.3*h21(pieceID) + vec3(0, 23, 21));
   
-  // 5. Sample Texture
-  // Grid coordinates are x, z.
-  vec2 uv = intersectPoint.xz / uGridSize;
+  // --- Mouse Logic Optimization ---
+  // 마우스 위치에 대한 jigsaw 연산도 무겁다면, 
+  // JS에서 미리 계산된 ID를 넘겨주는 것이 가장 좋으나,
+  // 여기서는 마우스가 유효한 경우에만 계산하도록 최적화할 수 있습니다.
   
-  // Determine cell index for random texture selection
-  vec2 cellIndex = floor(uv);
-  vec2 cellUv = fract(uv);
+  float isHovered = 0.0;
   
-  float rnd = hash(cellIndex);
-  
-  vec4 color;
-  if (rnd < 0.33) {
-    color = texture2D(uTexture0, cellUv);
-  } else if (rnd < 0.66) {
-    color = texture2D(uTexture1, cellUv);
-  } else {
-    color = texture2D(uTexture2, cellUv);
+  // 간단한 거리 체크로 먼 곳은 계산 생략 (Branching optimization)
+  // 마우스와 현재 픽셀의 월드 거리가 그리드 사이즈의 2배 이내일 때만 정밀 검사
+  if (uHoveredWorldPos.x > -9000.0 && distance(vWorldPos, uHoveredWorldPos) < uGridSize * 1.5) {
+      vec2 mouseUv = uHoveredWorldPos / uGridSize;
+      vec3 mouseJig = jigsaw(mouseUv);
+      vec2 mousePieceID = mouseJig.xy;
+      
+      // ID 매칭 확인
+      isHovered = 1.0 - step(0.01, length(pieceID - mousePieceID));
   }
+
+  // --- Coloring (기존과 동일) ---
+  float bevel = mix(
+    smoothstep(0.0, 0.3, dist),
+    smoothstep(0.0, 0.5, dist),
+    isHovered
+  );
   
-  gl_FragColor = color;
+  baseColor = mix(baseColor, baseColor * 1.2, isHovered);
+  vec3 finalColor = baseColor * (0.7 + 0.3 * bevel);
+  
+  float outline = smoothstep(0.0, 0.02, dist);
+  finalColor *= (0.4 + 0.6 * outline);
+
+  finalColor += vec3(0.1) * isHovered;
+  
+  float b = dot(finalColor, vec3(0.333));
+  finalColor = vec3(b) + (finalColor - vec3(b)) * 1.2;
+
+  gl_FragColor = vec4(finalColor, 1.0);
 }
 `;
 
-export function InfiniteBackground() {
-  const textures = useTexture(GROUND_TEXTURES);
-  const { camera } = useThree();
+interface InfiniteBackgroundProps {
+  objects?: PlacedObject[];
+  hoveredCell?: { x: number; z: number } | null;
+}
+
+export function InfiniteBackground({ objects = [], hoveredCell }: InfiniteBackgroundProps) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const meshRef = useRef<THREE.Mesh>(null);
   
   // Controls for Oblique Matrix
   const projectionParams = useProjectionControls();
   const { getPanOffset } = useObliqueControls();
 
-  // Setup texture
-  useLayoutEffect(() => {
-    textures.forEach(t => {
-      t.wrapS = THREE.RepeatWrapping;
-      t.wrapT = THREE.RepeatWrapping;
-      t.colorSpace = THREE.SRGBColorSpace;
-    });
-  }, [textures]);
-
   const uniforms = useMemo(
     () => ({
-      uTexture0: { value: textures[0] },
-      uTexture1: { value: textures[1] },
-      uTexture2: { value: textures[2] },
-      uInverseViewProj: { value: new THREE.Matrix4() },
-      uInverseOblique: { value: new THREE.Matrix4() },
-      uGridSize: { value: GRID_CONFIG.CELL_SIZE },
+      uGridSize: { value: GRID_CONFIG.CELL_SIZE * 4.0 },
+      uHoveredWorldPos: { value: new THREE.Vector2(-9999, -9999) },
     }),
-    [textures]
+    []
   );
 
-  // Temporary objects to avoid GC
-  const tempMatrix = useMemo(() => new THREE.Matrix4(), []);
-
   useFrame(() => {
-    if (!materialRef.current) return;
-
-    // 1. Calculate Inverse ViewProjection Matrix
-    // Inverse(Proj * View) = Inverse(View) * Inverse(Proj) = World * ProjInv
-    tempMatrix.copy(camera.matrixWorld).multiply(camera.projectionMatrixInverse);
-    materialRef.current.uniforms.uInverseViewProj.value.copy(tempMatrix);
+    if (!materialRef.current || !meshRef.current) return;
     
-    // 2. Calculate Inverse Oblique Matrix
+    // 1. Calculate Oblique Matrix
     const panOffset = getPanOffset();
-    // calculateObliqueMatrix returns a new matrix, unavoidable
     const obliqueMatrix = calculateObliqueMatrix(projectionParams, panOffset);
-    tempMatrix.copy(obliqueMatrix).invert();
-    materialRef.current.uniforms.uInverseOblique.value.copy(tempMatrix);
+    
+    // 2. Apply to Mesh (Floor Plane)
+    // The mesh geometry is on XY plane. We want it to represent the XZ floor.
+    // So we need to map Mesh X -> World X, Mesh Y -> World Z.
+    // We do this by swapping the Y and Z columns of the oblique matrix.
+    const floorMatrix = obliqueMatrix.clone();
+    
+    // Swap column 1 (Y) and column 2 (Z)
+    // Column 1 elements: 4, 5, 6, 7
+    // Column 2 elements: 8, 9, 10, 11
+    const te = floorMatrix.elements;
+    const temp4 = te[4]; te[4] = te[8]; te[8] = temp4;
+    const temp5 = te[5]; te[5] = te[9]; te[9] = temp5;
+    const temp6 = te[6]; te[6] = te[10]; te[10] = temp6;
+    const temp7 = te[7]; te[7] = te[11]; te[11] = temp7;
+    
+    meshRef.current.matrix.copy(floorMatrix);
+    meshRef.current.matrixWorldNeedsUpdate = true;
+
+    if (hoveredCell) {
+        materialRef.current.uniforms.uHoveredWorldPos.value.set(hoveredCell.x, hoveredCell.z);
+    } else {
+        materialRef.current.uniforms.uHoveredWorldPos.value.set(-9999, -9999);
+    }
   });
 
   return (
-    <mesh frustumCulled={false} renderOrder={-100}>
-      <planeGeometry args={[2, 2]} />
+    // frustumCulled={false}는 유지하되, Full Screen Quad 대신 큰 평면 사용
+    // matrixAutoUpdate={false}를 설정하여 수동으로 행렬을 제어
+    <mesh 
+      ref={meshRef}
+      frustumCulled={false} 
+      matrixAutoUpdate={false}
+    >
+      {/* 카메라가 이동하는 범위에 맞춰 충분히 큰 평면을 생성합니다. */}
+      <planeGeometry args={[1000, 1000]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
         uniforms={uniforms}
+        side={THREE.DoubleSide}
         depthWrite={false}
-        depthTest={false}
       />
     </mesh>
   );

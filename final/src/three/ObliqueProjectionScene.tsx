@@ -5,7 +5,7 @@ import { ObliqueCamera } from "./cameras/ObliqueCamera";
 import { Lights } from "./lights/Lights";
 import { InteractiveDisplayObjects } from "./components/DisplayObjects/InteractiveDisplayObjects";
 import { GridHighlight } from "./components/Grid/GridHighlight";
-import { GridFloor } from "./components/Grid/GridFloor";
+
 import { InfiniteBackground } from "./components/Grid/InfiniteBackground";
 import { EdgeZoneIndicator } from "./components/EdgeZoneIndicator";
 import { useObliqueProjection } from "./hooks/useObliqueProjection";
@@ -150,11 +150,10 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
       </group>
 
       {/* Infinite Background rendered via Shader - Outside of transformed group */}
-      <InfiniteBackground />
+      <InfiniteBackground objects={objects} hoveredCell={hoveredCell} />
 
       {/* 오브젝트들 - Oblique 투영 적용 */}
       <group ref={objectGroupRef}>
-        <GridFloor objects={objects} />
         <InteractiveDisplayObjects
           objects={objects}
           clickedObjectId={clickedObjectId}
