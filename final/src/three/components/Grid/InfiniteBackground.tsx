@@ -33,6 +33,7 @@ uniform float uTextureSize;
 uniform vec2 uClickPos;
 uniform float uClickTime;
 uniform float uTime;
+uniform float uGridRotation;
 
 varying vec2 vWorldPos;
 
@@ -70,9 +71,49 @@ void main() {
   // h21 is defined in jigsawFunctions
   vec3 baseColor = .8 + .2*cos(6.3*h21(pieceID) + vec3(0, 23, 21));
   
-  // If state is 0 (empty), make it white
-  if (state < 0.5) {
+  // --- Balloon / Puffy Effect for Occupied Cells ---
+  if (state >= 0.5) {
+      // Calculate Normal using Finite Difference
+      float eps = 0.005;
+      float d1 = jigsaw(uv + vec2(eps, 0.0)).z;
+      float d2 = jigsaw(uv + vec2(0.0, eps)).z;
+      
+      float dx = (d1 - dist) / eps;
+      float dy = (d2 - dist) / eps;
+      
+      // Shape the height field: h = sqrt(dist) gives a round top (balloon like)
+      // Slope is proportional to 1/sqrt(dist)
+      // We dampen the singularity at dist=0
+      float slope = 0.5 / sqrt(max(dist, 0.001));
+      
+      // Normal points against the gradient of height
+      // We assume dist increases inwards (positive inside).
+      // So gradient points inwards. We want normal to tilt outwards.
+      vec3 normal = normalize(vec3(-dx * slope, -dy * slope, 1.0));
+      
+      // Lighting
+      vec3 lightDir = normalize(vec3(-0.5, 0.5, 1.0));
+      float diff = max(dot(normal, lightDir), 0.0);
+      
+      // Specular
+      vec3 viewDir = vec3(0.0, 0.0, 1.0);
+      vec3 reflectDir = reflect(-lightDir, normal);
+      float spec = pow(max(dot(viewDir, reflectDir), 0.0), 16.0);
+      
+      // Apply lighting
+      baseColor = baseColor * (0.5 + 0.5 * diff) + vec3(0.2) * spec;
+      
+      // Darken edges slightly for definition
+      float outline = smoothstep(0.0, 0.05, dist);
+      baseColor *= (0.6 + 0.4 * outline);
+      
+  } else {
+      // Empty cells: white/flat
       baseColor = vec3(0.95, 0.95, 0.95);
+      
+      // Keep original bevel/outline for empty cells
+      float outline = smoothstep(0.0, 0.02, dist);
+      baseColor *= (0.4 + 0.1 * outline);
   }
   
   // --- Mouse Logic Optimization ---
@@ -106,26 +147,15 @@ void main() {
   }
 
   // --- Coloring ---
-  float bevel = mix(
-    smoothstep(0.0, 0.3, dist),
-    smoothstep(0.0, 0.5, dist),
-    isHovered
-  );
-  
-  baseColor = mix(baseColor, baseColor * 1.2, isHovered);
+  // Hover effect
+  baseColor = mix(baseColor, baseColor * 1.1 + vec3(0.1), isHovered);
   
   // Apply click effect to color
   baseColor += vec3(clickEffect * 0.2);
   
-  vec3 finalColor = baseColor * (0.7 + 0.2 * bevel);
-  
-  float outline = smoothstep(0.0, 0.02, dist);
-  finalColor *= (0.4 + 0.6 * outline);
-
-  finalColor += vec3(0.1) * isHovered;
-  
-  float b = dot(finalColor, vec3(0.333));
-  finalColor = vec3(b) + (finalColor - vec3(b)) * 1.2;
+  // Contrast/Gamma
+  float b = dot(baseColor, vec3(0.333));
+  vec3 finalColor = vec3(b) + (baseColor - vec3(b)) * 1.2;
 
   gl_FragColor = vec4(finalColor, 1.0);
 }
