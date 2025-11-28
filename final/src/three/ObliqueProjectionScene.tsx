@@ -137,7 +137,14 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
 
   return (
     <>
-      <ObliqueCamera />
+      <ObliqueCamera 
+        position={[projectionParams.cameraX, projectionParams.cameraY, projectionParams.cameraZ]}
+        rotation={[
+          projectionParams.cameraRotX * Math.PI / 180, 
+          projectionParams.cameraRotY * Math.PI / 180, 
+          projectionParams.cameraRotZ * Math.PI / 180
+        ]}
+      />
       <Lights />
 
       {/* Infinite Background rendered via Shader - Outside of transformed group */}
@@ -145,6 +152,7 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
         objects={objects} 
         hoveredCell={hoveredCell} 
         lastClickEvent={gridInteraction.lastClickEvent}
+        gridRotation={projectionParams.gridRotation}
       />
     </>
   );

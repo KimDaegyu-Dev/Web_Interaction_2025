@@ -40,9 +40,15 @@ ${jigsawFunctions}
 
 void main() {
   // 1. Jigsaw Pattern
-  // Use world position directly (no rotation)
+  // Apply rotation
+  float c = cos(uGridRotation);
+  float s = sin(uGridRotation);
+  mat2 rot = mat2(c, -s, s, c);
+  vec2 rotatedPos = rot * vWorldPos;
+
+  // Use rotated position
   // Scale UV by 2.0 to match 1 piece = 1 grid cell
-  vec2 uv = vWorldPos / uGridSize * 2.0;
+  vec2 uv = rotatedPos / uGridSize * 2.0;
   
   // Get piece ID and distance to edge
   vec3 jig = jigsaw(uv);
@@ -72,8 +78,11 @@ void main() {
   // --- Mouse Logic Optimization ---
   float isHovered = 0.0;
   
+  // Rotate mouse position
+  vec2 rotatedMouse = rot * uHoveredWorldPos;
+  
   // Mouse position in UV space
-  vec2 mouseUv = uHoveredWorldPos / uGridSize * 2.0;
+  vec2 mouseUv = rotatedMouse / uGridSize * 2.0;
 
   // 간단한 거리 체크로 먼 곳은 계산 생략 (Branching optimization)
   if (uHoveredWorldPos.x > -9000.0 && distance(vWorldPos, uHoveredWorldPos) < uGridSize * 1.5) {
@@ -108,7 +117,7 @@ void main() {
   // Apply click effect to color
   baseColor += vec3(clickEffect * 0.2);
   
-  vec3 finalColor = baseColor * (0.7 + 0.3 * bevel);
+  vec3 finalColor = baseColor * (0.7 + 0.2 * bevel);
   
   float outline = smoothstep(0.0, 0.02, dist);
   finalColor *= (0.4 + 0.6 * outline);
@@ -126,12 +135,13 @@ interface InfiniteBackgroundProps {
   objects?: PlacedObject[];
   hoveredCell?: { x: number; z: number } | null;
   lastClickEvent?: { x: number; z: number; time: number } | null;
+  gridRotation?: number;
 }
 
 const TEXTURE_SIZE = 1024;
 const TEXTURE_OFFSET = TEXTURE_SIZE / 2;
 
-export function InfiniteBackground({ objects = [], hoveredCell, lastClickEvent }: InfiniteBackgroundProps) {
+export function InfiniteBackground({ objects = [], hoveredCell, lastClickEvent, gridRotation = 0 }: InfiniteBackgroundProps) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const meshRef = useRef<THREE.Mesh>(null);
   
@@ -191,12 +201,16 @@ export function InfiniteBackground({ objects = [], hoveredCell, lastClickEvent }
       uClickPos: { value: new THREE.Vector2(-9999, -9999) },
       uClickTime: { value: -100.0 }, // Initialize to negative so no effect at start
       uTime: { value: 0 },
+      uGridRotation: { value: 0 },
     }),
     [dataTexture]
   );
 
   useFrame((state) => {
     if (!materialRef.current || !meshRef.current) return;
+    
+    // Update rotation uniform
+    materialRef.current.uniforms.uGridRotation.value = (gridRotation * Math.PI) / 180;
     
     // 1. Calculate Oblique Matrix
     const panOffset = getPanOffset();

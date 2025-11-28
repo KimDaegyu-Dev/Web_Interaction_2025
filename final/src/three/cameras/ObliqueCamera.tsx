@@ -4,6 +4,7 @@ import { OrthographicCamera } from "@react-three/drei";
 
 interface ObliqueCameraProps {
   position?: [number, number, number];
+  rotation?: [number, number, number];
   zoom?: number;
   near?: number;
   far?: number;
@@ -17,6 +18,7 @@ interface ObliqueCameraProps {
  */
 export function ObliqueCamera({
   position = [1, 5, 5],
+  rotation = [0, 0, 0],
   zoom = 50,
   near = -10000,
   far = 10000, // 매우 큰 far 값으로 z 값 제한 제거
@@ -37,6 +39,7 @@ export function ObliqueCamera({
     <OrthographicCamera
       makeDefault
       position={position}
+      rotation={rotation}
       zoom={zoom}
       near={near}
       far={far}

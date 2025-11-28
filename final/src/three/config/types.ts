@@ -6,6 +6,13 @@ export interface ProjectionParams {
   scaleX: number;
   scaleY: number;
   scaleZ: number;
+  cameraX: number;
+  cameraY: number;
+  cameraZ: number;
+  cameraRotX: number;
+  cameraRotY: number;
+  cameraRotZ: number;
+  gridRotation: number;
 }
 
 // 프리셋 타입
@@ -18,5 +25,12 @@ export interface Preset {
   scaleX: number;
   scaleY: number;
   scaleZ: number;
+  cameraX?: number;
+  cameraY?: number;
+  cameraZ?: number;
+  cameraRotX?: number;
+  cameraRotY?: number;
+  cameraRotZ?: number;
+  gridRotation?: number;
 }
 

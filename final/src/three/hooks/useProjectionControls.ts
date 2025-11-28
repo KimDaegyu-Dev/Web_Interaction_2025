@@ -48,6 +48,48 @@ export function useProjectionControls() {
         max: 2,
         step: 0.01,
       },
+      cameraX: {
+        value: DEFAULT_PARAMS.cameraX,
+        min: -50,
+        max: 50,
+        step: 0.1,
+      },
+      cameraY: {
+        value: DEFAULT_PARAMS.cameraY,
+        min: -50,
+        max: 50,
+        step: 0.1,
+      },
+      cameraZ: {
+        value: DEFAULT_PARAMS.cameraZ,
+        min: -50,
+        max: 50,
+        step: 0.1,
+      },
+      cameraRotX: {
+        value: DEFAULT_PARAMS.cameraRotX,
+        min: -180,
+        max: 180,
+        step: 1,
+      },
+      cameraRotY: {
+        value: DEFAULT_PARAMS.cameraRotY,
+        min: -180,
+        max: 180,
+        step: 1,
+      },
+      cameraRotZ: {
+        value: DEFAULT_PARAMS.cameraRotZ,
+        min: -180,
+        max: 180,
+        step: 1,
+      },
+      gridRotation: {
+        value: DEFAULT_PARAMS.gridRotation,
+        min: 0,
+        max: 360,
+        step: 1,
+      },
     },
     { render: () => debugMode },
   ) as ProjectionParams;

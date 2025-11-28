@@ -9,6 +9,13 @@ export const PRESETS: Record<PresetName, Preset> = {
     scaleX: 1,
     scaleY: 1,
     scaleZ: 1,
+    cameraX: 1,
+    cameraY: 5,
+    cameraZ: 5,
+    cameraRotX: 0,
+    cameraRotY: 0,
+    cameraRotZ: 0,
+    gridRotation: 0,
   },
   Dimetric: {
     thetaX: 335, // x축: 약간 더 오른쪽 아래
@@ -17,6 +24,13 @@ export const PRESETS: Record<PresetName, Preset> = {
     scaleX: 1,
     scaleY: 1,
     scaleZ: 0.5, // z축 스케일 줄임
+    cameraX: 1,
+    cameraY: 5,
+    cameraZ: 5,
+    cameraRotX: 0,
+    cameraRotY: 0,
+    cameraRotZ: 0,
+    gridRotation: 0,
   },
   FrontOblique: {
     thetaX: 0,
@@ -25,6 +39,13 @@ export const PRESETS: Record<PresetName, Preset> = {
     scaleX: 1,
     scaleY: 1,
     scaleZ: 0.7,
+    cameraX: 1,
+    cameraY: 5,
+    cameraZ: 5,
+    cameraRotX: 0,
+    cameraRotY: 0,
+    cameraRotZ: 0,
+    gridRotation: 0,
   },
   Cabinet: {
     thetaX: 0,
@@ -33,6 +54,13 @@ export const PRESETS: Record<PresetName, Preset> = {
     scaleX: 1,
     scaleY: 1,
     scaleZ: 0.5,
+    cameraX: 1,
+    cameraY: 5,
+    cameraZ: 5,
+    cameraRotX: 0,
+    cameraRotY: 0,
+    cameraRotZ: 0,
+    gridRotation: 0,
   },
 };
 
