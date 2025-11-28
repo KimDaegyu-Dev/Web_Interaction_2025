@@ -32,6 +32,7 @@ export function useGridInteraction() {
   );
   const [selectedBuilding, setSelectedBuilding] = useState<PlacedObject | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastClickEvent, setLastClickEvent] = useState<{ x: number; z: number; time: number } | null>(null);
 
   const {
     objects,
@@ -88,6 +89,8 @@ export function useGridInteraction() {
   const onCellClick = useCallback(
     (e: ThreeEvent<MouseEvent>, x: number, y: number, z: number) => {
       e.stopPropagation();
+      setLastClickEvent({ x, z, time: e.timeStamp / 1000 }); // Use event timestamp or performance.now()
+
       const key = `${x}_${z}`;
       const existing = objectsByCell.get(key);
 
@@ -240,5 +243,6 @@ export function useGridInteraction() {
     setObjectState,
     handleModalSubmit,
     handleModalClose,
+    lastClickEvent,
   };
 }

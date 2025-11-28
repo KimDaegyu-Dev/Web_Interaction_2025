@@ -3,8 +3,6 @@ import { Canvas, useThree, ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
 import { ObliqueCamera } from "./cameras/ObliqueCamera";
 import { Lights } from "./lights/Lights";
-import { InteractiveDisplayObjects } from "./components/DisplayObjects/InteractiveDisplayObjects";
-import { GridHighlight } from "./components/Grid/GridHighlight";
 
 import { InfiniteBackground } from "./components/Grid/InfiniteBackground";
 import { EdgeZoneIndicator } from "./components/EdgeZoneIndicator";
@@ -16,7 +14,7 @@ import { useGridRaycasting } from "./hooks/useGridRaycasting";
 import { screenToGridCoords } from "./utils/raycasting";
 import { calculateObliqueMatrix } from "./utils/projection";
 import { GRID_CONFIG } from "./config/grid";
-import { BuildingModal } from "@/components/BuildingModal";
+import { MessageModal } from "@/components/MessageModal";
 
 interface SceneProps {
   gridInteraction: ReturnType<typeof useGridInteraction>;
@@ -142,25 +140,12 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
       <ObliqueCamera />
       <Lights />
 
-      {/* 그리드 강조 메시 */}
-      <group ref={gridHighlightGroupRef}>
-        <GridHighlight
-          hoveredCell={hoveredCell}
-        />
-      </group>
-
       {/* Infinite Background rendered via Shader - Outside of transformed group */}
-      <InfiniteBackground objects={objects} hoveredCell={hoveredCell} />
-
-      {/* 오브젝트들 - Oblique 투영 적용 */}
-      <group ref={objectGroupRef}>
-        <InteractiveDisplayObjects
-          objects={objects}
-          clickedObjectId={clickedObjectId}
-          onObjectClick={onObjectClick}
-          onRequestStateChange={setObjectState}
-        />
-      </group>
+      <InfiniteBackground 
+        objects={objects} 
+        hoveredCell={hoveredCell} 
+        lastClickEvent={gridInteraction.lastClickEvent}
+      />
     </>
   );
 }
@@ -275,7 +260,7 @@ export function ObliqueProjectionScene() {
         mousePosition={mousePosition}
       />
       {buildingModalMode && (
-        <BuildingModal
+        <MessageModal
           isOpen={!!buildingModalMode}
           onClose={handleModalClose}
           onSubmit={handleModalSubmit}
