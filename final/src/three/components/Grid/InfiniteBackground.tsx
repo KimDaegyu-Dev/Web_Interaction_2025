@@ -29,11 +29,12 @@ uniform vec3 uCursorPositions[50]; // Max 50 cursors
 uniform int uCursorCount;
 uniform int uLightMode; // 0 = buildings, 1 = cursors
 uniform float uInfluenceRadius; // Cursor/building influence radius
+uniform vec3 uCameraPosition; // Camera position for LOD
 
 varying vec2 vUv;
 
-// Smooth gradient colors (deep blue to purple to pink)
-vec3 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist) {
+// Optimized gradient colors with cluster weighting
+vec3 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist, float weight) {
   float dist = length(worldPos - centerPos) / maxDist;
   
   // Define color palette
@@ -42,26 +43,28 @@ vec3 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist) {
   vec3 color3 = vec3(0.2, 0.1, 0.4);     // Purple
   vec3 color4 = vec3(0.1, 0.15, 0.35);   // Deep blue (edge)
   
-  // Create radial gradient with smooth falloff
-  vec3 color;
+  // Simplified gradient without branches (better GPU performance)
+  float t1 = smoothstep(0.0, 0.3, dist);
+  float t2 = smoothstep(0.3, 0.6, dist);
+  float t3 = smoothstep(0.6, 1.0, dist);
   
-  if (dist < 0.3) {
-    color = mix(color1, color2, smoothstep(0.0, 0.3, dist));
-  } else if (dist < 0.6) {
-    color = mix(color2, color3, smoothstep(0.3, 0.6, dist));
-  } else {
-    color = mix(color3, color4, smoothstep(0.6, 1.0, dist));
-  }
+  vec3 color = mix(color1, color2, t1);
+  color = mix(color, color3, t2);
+  color = mix(color, color4, t3);
   
-  // Add subtle animated waves
-  float wave = sin(worldPos.x * 0.15 + uTime * 0.5) * 0.5 + 0.5;
-  wave *= sin(worldPos.y * 0.15 + uTime * 0.3) * 0.5 + 0.5;
+  // OPTIMIZED: Use fract instead of sin (much faster!)
+  float wave = fract(worldPos.x * 0.15 + uTime * 0.5);
+  wave *= fract(worldPos.y * 0.15 + uTime * 0.3);
   color += vec3(0.02, 0.01, 0.03) * wave;
   
   // Smooth falloff at edges
   float falloff = 1.0 - smoothstep(0.5, 1.0, dist);
   
-  return color * falloff;
+  // Apply weight (building count in cluster)
+  // Normalize weight: 1 building = 1.0, 5+ buildings = 2.0 (capped)
+  float normalizedWeight = min(weight / 3.0, 2.0);
+  
+  return color * falloff * normalizedWeight;
 }
 
 // Grid line function with anti-aliasing
@@ -129,7 +132,9 @@ void main() {
       
       // Only calculate gradient if within influence radius (early exit optimization)
       if (distToLight < maxInfluenceRadius) {
-        vec3 gradient = getGradientColor(worldPos, lightPos, maxInfluenceRadius);
+        // Extract weight from Y component (building count in cluster)
+        float weight = uLightMode == 0 ? uBuildingPositions[i].y : 1.0;
+        vec3 gradient = getGradientColor(worldPos, lightPos, maxInfluenceRadius, weight);
         finalGradient += gradient;
       }
     }
@@ -202,6 +207,7 @@ export function InfiniteBackground({
       uCursorCount: { value: 0 },
       uLightMode: { value: 0 }, // 0 = buildings, 1 = cursors
       uInfluenceRadius: { value: GRID_CONFIG.CURSOR_INFLUENCE_RADIUS },
+      uCameraPosition: { value: new THREE.Vector3() },
     }),
     []
   );
@@ -210,12 +216,64 @@ export function InfiniteBackground({
   const tempMatrix = useMemo(() => new THREE.Matrix4(), []);
   const tempObliqueMatrix = useMemo(() => new THREE.Matrix4(), []);
 
-  // Update building positions when objects change
+  // SPATIAL HASHING CLUSTERING: Group buildings into clusters
   useEffect(() => {
     if (!materialRef.current) return;
     
-    const positions = objects.slice(0, 50).map(obj => 
-      new THREE.Vector3(obj.position[0], obj.position[1], obj.position[2])
+    const CLUSTER_SIZE = 10; // 10x10 unit grid cells
+    const MAX_CLUSTERS = 50; // Maximum clusters to send to shader
+    
+    // 1. Create clusters using spatial hashing
+    const clusterMap = new Map<string, {
+      buildings: typeof objects;
+      centerX: number;
+      centerZ: number;
+      count: number;
+    }>();
+    
+    objects.forEach(obj => {
+      // Determine which cluster this building belongs to
+      const clusterX = Math.floor(obj.position[0] / CLUSTER_SIZE);
+      const clusterZ = Math.floor(obj.position[2] / CLUSTER_SIZE);
+      const key = `${clusterX},${clusterZ}`;
+      
+      if (!clusterMap.has(key)) {
+        clusterMap.set(key, {
+          buildings: [],
+          centerX: 0,
+          centerZ: 0,
+          count: 0
+        });
+      }
+      
+      clusterMap.get(key)!.buildings.push(obj);
+    });
+    
+    // 2. Calculate cluster centers (weighted average)
+    const clusters = Array.from(clusterMap.values()).map(cluster => {
+      const avgX = cluster.buildings.reduce((sum, b) => sum + b.position[0], 0) / cluster.buildings.length;
+      const avgZ = cluster.buildings.reduce((sum, b) => sum + b.position[2], 0) / cluster.buildings.length;
+      
+      return {
+        centerX: avgX,
+        centerZ: avgZ,
+        count: cluster.buildings.length,
+        distance: Math.sqrt(
+          Math.pow(avgX - camera.position.x, 2) +
+          Math.pow(avgZ - camera.position.z, 2)
+        )
+      };
+    });
+    
+    // 3. Sort by distance to camera and take nearest clusters
+    const nearestClusters = clusters
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, MAX_CLUSTERS);
+    
+    // 4. Convert to shader format
+    const positions = nearestClusters.map(cluster => 
+      new THREE.Vector3(cluster.centerX, cluster.count, cluster.centerZ)
+      // Y component stores building count for weighting
     );
     
     // Fill remaining slots with zeros
@@ -224,8 +282,8 @@ export function InfiniteBackground({
     }
     
     materialRef.current.uniforms.uBuildingPositions.value = positions;
-    materialRef.current.uniforms.uBuildingCount.value = Math.min(objects.length, 50);
-  }, [objects]);
+    materialRef.current.uniforms.uBuildingCount.value = Math.min(nearestClusters.length, 50);
+  }, [objects, camera.position]);
 
   // Update cursor positions when cursors or myCursor change
   useEffect(() => {
@@ -258,6 +316,9 @@ export function InfiniteBackground({
 
   useFrame(() => {
     if (!materialRef.current) return;
+
+    // Update camera position uniform for shader
+    materialRef.current.uniforms.uCameraPosition.value.copy(camera.position);
 
     // Update time for animation
     materialRef.current.uniforms.uTime.value = clock.getElapsedTime();
