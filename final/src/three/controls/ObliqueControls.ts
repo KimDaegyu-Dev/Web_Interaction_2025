@@ -27,10 +27,18 @@ export class ObliqueControls {
   private _onWheel: (e: WheelEvent) => void;
   private _onMouseLeave: () => void;
   private _updateLoop: () => void;
+  public onChange:
+    | ((state: { x: number; y: number; zoom: number }) => void)
+    | null = null;
 
-  constructor(camera: THREE.Camera, domElement: HTMLElement) {
+  constructor(
+    camera: THREE.Camera,
+    domElement: HTMLElement,
+    onChange?: (state: { x: number; y: number; zoom: number }) => void,
+  ) {
     this.camera = camera;
     this.domElement = domElement;
+    this.onChange = onChange || null;
 
     // === 기본 상태 ===
     this.isDragging = false;
@@ -77,7 +85,7 @@ export class ObliqueControls {
   }
 
   // === 마우스 다운 === (드래그 비활성화)
-  private onMouseDown(e: MouseEvent): void {
+  private onMouseDown(_e: MouseEvent): void {
     // 드래그 기능 제거됨
   }
 
@@ -187,6 +195,15 @@ export class ObliqueControls {
       new THREE.Vector3(-directionX * speed, directionY * speed, 0),
     );
 
+    // 상태 변경 알림
+    if (this.onChange) {
+      this.onChange({
+        x: this.panOffset.x,
+        y: this.panOffset.y,
+        zoom: this.zoom,
+      });
+    }
+
     this.animationFrameId = requestAnimationFrame(this._updateLoop);
   }
 
@@ -221,6 +238,15 @@ export class ObliqueControls {
       this.camera.zoom = 1 / this.zoom;
       this.camera.updateProjectionMatrix();
     }
+
+    // 상태 변경 알림
+    if (this.onChange) {
+      this.onChange({
+        x: this.panOffset.x,
+        y: this.panOffset.y,
+        zoom: this.zoom,
+      });
+    }
   }
 
   // === 패닝 오프셋 가져오기 ===
@@ -244,6 +270,18 @@ export class ObliqueControls {
   }
 
   // === 정리 ===
+  // === 상태 설정 ===
+  setState(x: number, y: number, zoom: number): void {
+    this.panOffset.set(x, y, 0);
+    this.zoom = zoom;
+
+    // 카메라 줌 업데이트
+    if (this.camera instanceof THREE.OrthographicCamera) {
+      this.camera.zoom = 1 / this.zoom;
+      this.camera.updateProjectionMatrix();
+    }
+  }
+
   dispose(): void {
     this.stopUpdateLoop();
     // mousedown, mouseup 이벤트 리스너 제거 (드래그 비활성화)

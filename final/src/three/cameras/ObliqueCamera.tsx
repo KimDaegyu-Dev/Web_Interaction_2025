@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 import { OrthographicCamera } from "@react-three/drei";
+import { useCameraStore } from "../../stores/cameraStore";
 
 interface ObliqueCameraProps {
   position?: [number, number, number];
@@ -22,6 +23,11 @@ export function ObliqueCamera({
   far = 10000, // 매우 큰 far 값으로 z 값 제한 제거
 }: ObliqueCameraProps) {
   const { gl } = useThree();
+  const cameraState = useCameraStore((state) => state.cameraState);
+
+  // 저장된 상태가 있으면 그 값을 사용 (ObliqueControls의 zoom은 1/camera.zoom 형태이므로 변환)
+  // 저장된 상태가 없으면 prop으로 전달된 기본값 사용
+  const initialZoom = cameraState ? 1 / cameraState.zoom : zoom;
 
   useEffect(() => {
     // 리사이즈 이벤트 핸들러
@@ -37,7 +43,7 @@ export function ObliqueCamera({
     <OrthographicCamera
       makeDefault
       position={position}
-      zoom={zoom}
+      zoom={initialZoom}
       near={near}
       far={far}
     />
