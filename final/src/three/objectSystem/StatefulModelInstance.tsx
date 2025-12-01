@@ -12,7 +12,7 @@ import { modelCache } from "./ModelCache";
 import type { SceneObjectInstance } from "../hooks/usePlacedObjects";
 import { MODEL_CONFIG } from "../config/models";
 import { GRID_CONFIG } from "../config/grid";
-import type { CursorData } from "@/utils/supabase";
+import type { CursorData } from "../hooks/useRealtimeCursors";
 
 interface StatefulModelInstanceProps {
   instance: SceneObjectInstance;
@@ -52,14 +52,15 @@ export const StatefulModelInstance = memo(function StatefulModelInstance({
   myCursor = null,
 }: StatefulModelInstanceProps) {
   const gltf = useGLTF(definition.url);
-  
+
   const clonedScene = useMemo(() => {
     // Construct a unique cache key
-    const cacheKey = definition.meshIndex !== undefined 
-      ? `${definition.url}_mesh_${definition.meshIndex}`
-      : definition.nodeName 
-        ? `${definition.url}_node_${definition.nodeName}`
-        : definition.url;
+    const cacheKey =
+      definition.meshIndex !== undefined
+        ? `${definition.url}_mesh_${definition.meshIndex}`
+        : definition.nodeName
+          ? `${definition.url}_node_${definition.nodeName}`
+          : definition.url;
 
     return modelCache.cloneFromCache(cacheKey, () => {
       // Factory function: creates the base object to be cached
@@ -141,7 +142,7 @@ export const StatefulModelInstance = memo(function StatefulModelInstance({
     const allCursorPositions: { x: number; z: number }[] = [];
     
     // Add other users' cursors
-    cursors.forEach(cursor => {
+    cursors.forEach((cursor) => {
       allCursorPositions.push({ x: cursor.grid_x, z: cursor.grid_z });
     });
     

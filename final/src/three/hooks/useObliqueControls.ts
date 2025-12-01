@@ -13,6 +13,8 @@ export function useObliqueControls() {
   const setCameraState = useCameraStore((state) => state.setCameraState);
   const cameraState = useCameraStore((state) => state.cameraState);
 
+  const autoSaveRef = useRef(true);
+
   // Debounce ref to avoid re-creating function on every render
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -30,7 +32,9 @@ export function useObliqueControls() {
       }
 
       debounceTimerRef.current = setTimeout(() => {
-        setCameraState(state);
+        if (autoSaveRef.current) {
+          setCameraState(state);
+        }
       }, 500); // 500ms 디바운스
     };
 
@@ -49,13 +53,15 @@ export function useObliqueControls() {
     controlsRef.current = controls;
 
     return () => {
-      // 언마운트 시 상태 저장
-      const panOffset = controls.getPanOffset();
-      setCameraState({
-        x: panOffset.x,
-        y: panOffset.y,
-        zoom: controls.zoom,
-      });
+      // 언마운트 시 상태 저장 (autoSave가 true일 때만)
+      if (autoSaveRef.current) {
+        const panOffset = controls.getPanOffset();
+        setCameraState({
+          x: panOffset.x,
+          y: panOffset.y,
+          zoom: controls.zoom,
+        });
+      }
 
       // 클린업: 이벤트 리스너 제거
       controls.dispose();
@@ -83,9 +89,14 @@ export function useObliqueControls() {
     return { left: false, right: false, top: false, bottom: false };
   };
 
+  const setAutoSave = (enabled: boolean) => {
+    autoSaveRef.current = enabled;
+  };
+
   return {
     getPanOffset,
     getEdgeZone,
+    setAutoSave,
     controls: controlsRef.current,
   };
 }

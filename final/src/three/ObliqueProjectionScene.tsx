@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Canvas, useThree, ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
 import { ObliqueCamera } from "./cameras/ObliqueCamera";
@@ -33,9 +34,15 @@ interface SceneProps {
       bottom: boolean;
     };
   } | null>;
+  navigate: (path: string) => void;
 }
 
-function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
+function Scene({
+  gridInteraction,
+  mousePosition,
+  controlsRef,
+  navigate,
+}: SceneProps) {
   const gridHighlightGroupRef = useRef<THREE.Group>(null);
   const objectGroupRef = useRef<THREE.Group>(null);
   const realtimeCursorsGroupRef = useRef<THREE.Group>(null);
@@ -91,8 +98,8 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
 
   // 배경색 설정 (Light/Dark mode에 따라)
   useEffect(() => {
-    const bgColor = isLightMode 
-      ? new THREE.Color(0xE8E8E8) // Light gray for light mode
+    const bgColor = isLightMode
+      ? new THREE.Color(0xe8e8e8) // Light gray for light mode
       : new THREE.Color(GRID_CONFIG.COLORS.BACKGROUND); // Dark for dark mode
     scene.background = bgColor;
   }, [scene, isLightMode]);
@@ -141,38 +148,51 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
   useObliqueProjection(objectGroupRef, projectionParams, getPanOffset);
   useObliqueProjection(realtimeCursorsGroupRef, projectionParams, getPanOffset);
 
+  // 오브젝트 클릭 핸들러 (페이지 전환만)
+  const handleObjectClick = useCallback(
+    (e: ThreeEvent<MouseEvent>, objectId: string) => {
+      // 기존 로직 호출 (상태 업데이트 등)
+      onObjectClick(e, objectId);
+
+      // 페이지 전환
+      navigate(`/details/${objectId}`);
+    },
+    [onObjectClick, navigate],
+  );
+
   return (
     <>
       <ObliqueCamera />
       <Lights isLightMode={isLightMode} />
 
-      {/* 그리드 강조 메시 - Hidden since we're using real-time cursor instead */}
-      {/* <group ref={gridHighlightGroupRef}>
-        <GridHighlight
-          hoveredCell={hoveredCell}
-        />
-      </group> */}
-
       {/* Real-time cursors from all users (including me) */}
       <group ref={realtimeCursorsGroupRef}>
-        <RealtimeCursors 
-          cursors={cursors} 
-          myCursor={hoveredCell ? { 
-            gridX: hoveredCell.x, 
-            gridZ: hoveredCell.z, 
-            color: "#FFFFFF" 
-          } : null}
+        <RealtimeCursors
+          cursors={cursors}
+          myCursor={
+            hoveredCell
+              ? {
+                  gridX: hoveredCell.x,
+                  gridZ: hoveredCell.z,
+                  color: "#FFFFFF",
+                }
+              : null
+          }
         />
       </group>
 
       {/* Infinite Background rendered via Shader - Outside of transformed group */}
-      <InfiniteBackground 
-        objects={objects} 
+      <InfiniteBackground
+        objects={objects}
         cursors={cursors}
-        myCursor={hoveredCell ? { 
-          gridX: hoveredCell.x, 
-          gridZ: hoveredCell.z 
-        } : null}
+        myCursor={
+          hoveredCell
+            ? {
+                gridX: hoveredCell.x,
+                gridZ: hoveredCell.z,
+              }
+            : null
+        }
         lightMode={projectionParams.backgroundLightMode}
       />
 
@@ -182,15 +202,19 @@ function Scene({ gridInteraction, mousePosition, controlsRef }: SceneProps) {
         <InteractiveDisplayObjects
           objects={objects}
           clickedObjectId={clickedObjectId}
-          onObjectClick={onObjectClick}
+          onObjectClick={handleObjectClick}
           onRequestStateChange={setObjectState}
           cursors={cursors}
-          myCursor={hoveredCell ? {
-            gridX: hoveredCell.x,
-            gridZ: hoveredCell.z
-          } : null}
+          myCursor={
+            hoveredCell
+              ? {
+                  gridX: hoveredCell.x,
+                  gridZ: hoveredCell.z,
+                }
+              : null
+          }
         />
-        
+
         {/* Global Light Switch - positioned at corner of grid */}
         <GlobalSwitchObject
           position={[-10, 0, -10]}
@@ -211,6 +235,7 @@ export function ObliqueProjectionScene() {
     handleModalSubmit,
     handleModalClose,
   } = gridInteraction;
+  const navigate = useNavigate();
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   // 초기 마우스 위치를 화면 중앙으로 설정
@@ -295,6 +320,7 @@ export function ObliqueProjectionScene() {
           gridInteraction={gridInteraction}
           mousePosition={mousePosition}
           controlsRef={controlsRef}
+          navigate={navigate}
         />
       </Canvas>
       {/* 가장자리 영역 표시기 */}

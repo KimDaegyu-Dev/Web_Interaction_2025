@@ -4,7 +4,7 @@ import type { PlacedObject } from "../../hooks/useGridInteraction";
 import { StatefulModelInstance } from "../../objectSystem/StatefulModelInstance";
 import { getModelDefinition } from "../../objectSystem/modelLibrary";
 import type { ObjectStateKey } from "../../objectSystem/modelLibrary";
-import type { CursorData } from "@/utils/supabase";
+import type { CursorData } from "../../hooks/useRealtimeCursors";
 
 interface InteractiveDisplayObjectsProps {
   objects?: PlacedObject[];

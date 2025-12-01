@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter as ReactRouter, Routes, Route } from "react-router-dom";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ObliqueProjectionPage } from "./pages/ObliqueProjectionPage";
+import { DetailsPage } from "./pages/DetailsPage";
 import { useDebugMode } from "./utils";
 
 const queryClient = new QueryClient({
@@ -31,6 +32,7 @@ export function Router() {
         <Routes>
           <Route element={<ObliqueProjectionPage />} path="/"></Route>
           <Route element={<ObliqueProjectionPage />} path="/debug"></Route>
+          <Route element={<DetailsPage />} path="/details/:id"></Route>
         </Routes>
       </ReactRouter>
       {/* TanStack Query Devtools: #debug가 있을 때만 렌더링 */}
