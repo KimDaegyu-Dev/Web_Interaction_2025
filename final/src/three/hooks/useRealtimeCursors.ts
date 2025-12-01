@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { supabase, type CursorData } from "@/utils/supabase";
+import { supabase } from "@/utils/supabase";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { Subject } from "rxjs";
 import { throttleTime } from "rxjs/operators";
@@ -32,6 +32,24 @@ interface CursorUpdate {
   gridZ: number;
 }
 
+// Broadcast message payload
+interface BroadcastCursorPayload {
+  user_id: string;
+  grid_x: number;
+  grid_z: number;
+  color: string;
+  timestamp: number;
+}
+
+// In-memory cursor data (no DB)
+export interface CursorData {
+  user_id: string;
+  grid_x: number;
+  grid_z: number;
+  color: string;
+  timestamp: number;
+}
+
 export function useRealtimeCursors() {
   const [cursors, setCursors] = useState<Map<string, CursorData>>(new Map());
   const [myCursorPosition, setMyCursorPosition] = useState<{ gridX: number; gridZ: number } | null>(null);
@@ -42,32 +60,26 @@ export function useRealtimeCursors() {
   // RxJS Subject for cursor updates
   const cursorUpdateSubject = useRef<Subject<CursorUpdate>>(new Subject());
 
-  // Setup RxJS throttling
+  // Setup RxJS throttling and broadcast
   useEffect(() => {
     const subscription = cursorUpdateSubject.current
       .pipe(
-        throttleTime(500, undefined, { leading: true, trailing: true }) // 500ms throttle (2 updates/sec)
+        throttleTime(200, undefined, { leading: true, trailing: true }) // 200ms throttle (5 updates/sec)
       )
-      .subscribe(async ({ gridX, gridZ }) => {
-        try {
-          const { error } = await supabase.from("cursors").upsert(
-            {
+      .subscribe(({ gridX, gridZ }) => {
+        // Broadcast cursor position instead of DB upsert
+        if (channelRef.current) {
+          channelRef.current.send({
+            type: "broadcast",
+            event: "cursor-move",
+            payload: {
               user_id: myUserId,
               grid_x: gridX,
               grid_z: gridZ,
               color: myColor,
-              updated_at: new Date().toISOString(),
-            },
-            {
-              onConflict: "user_id",
-            }
-          );
-
-          if (error) {
-            console.error("Error updating cursor:", error);
-          }
-        } catch (err) {
-          console.error("Failed to update cursor:", err);
+              timestamp: Date.now(),
+            } as BroadcastCursorPayload,
+          });
         }
       });
 
@@ -82,62 +94,50 @@ export function useRealtimeCursors() {
       // Update local state immediately for responsive UI
       setMyCursorPosition({ gridX, gridZ });
 
-      // Emit to RxJS subject for throttled network update
+      // Emit to RxJS subject for throttled broadcast
       cursorUpdateSubject.current.next({ gridX, gridZ });
     },
     []
   );
 
-  // Subscribe to cursor updates
+  // Subscribe to broadcast cursor updates
   useEffect(() => {
-    // Initial fetch of existing cursors
-    const fetchCursors = async () => {
-      const { data, error } = await supabase
-        .from("cursors")
-        .select("*")
-        .neq("user_id", myUserId);
-
-      if (error) {
-        console.error("Error fetching cursors:", error);
-        return;
-      }
-
-      if (data) {
-        const cursorMap = new Map<string, CursorData>();
-        data.forEach((cursor) => {
-          cursorMap.set(cursor.user_id, cursor as CursorData);
-        });
-        setCursors(cursorMap);
-      }
-    };
-
-    fetchCursors();
-
-    // Subscribe to real-time updates
+    // Create broadcast channel
     const channel = supabase
-      .channel("cursors-channel")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "cursors",
+      .channel("cursors-broadcast", {
+        config: {
+          broadcast: { self: false }, // Don't receive our own broadcasts
         },
-        (payload) => {
-          const cursor = payload.new as CursorData;
+      })
+      .on(
+        "broadcast",
+        { event: "cursor-move" },
+        (payload: { payload: BroadcastCursorPayload }) => {
+          const cursor = payload.payload;
 
-          // Ignore my own cursor
+          // Ignore my own cursor (extra safety)
           if (cursor.user_id === myUserId) return;
 
           setCursors((prev) => {
             const next = new Map(prev);
-            
-            if (payload.eventType === "DELETE") {
-              next.delete(cursor.user_id);
-            } else {
-              next.set(cursor.user_id, cursor);
-            }
-            
+            next.set(cursor.user_id, {
+              user_id: cursor.user_id,
+              grid_x: cursor.grid_x,
+              grid_z: cursor.grid_z,
+              color: cursor.color,
+              timestamp: cursor.timestamp,
+            });
+            return next;
+          });
+        }
+      )
+      .on(
+        "broadcast",
+        { event: "cursor-leave" },
+        (payload: { payload: { user_id: string } }) => {
+          setCursors((prev) => {
+            const next = new Map(prev);
+            next.delete(payload.payload.user_id);
             return next;
           });
         }
@@ -146,37 +146,37 @@ export function useRealtimeCursors() {
 
     channelRef.current = channel;
 
-    // Cleanup: remove my cursor when leaving
+    // Cleanup: broadcast leave event when unmounting
     return () => {
       if (channelRef.current) {
+        channelRef.current.send({
+          type: "broadcast",
+          event: "cursor-leave",
+          payload: { user_id: myUserId },
+        });
         supabase.removeChannel(channelRef.current);
       }
-
-      // Delete my cursor from the database
-      supabase
-        .from("cursors")
-        .delete()
-        .eq("user_id", myUserId)
-        .then(() => {
-          console.log("Cursor removed on cleanup");
-        });
     };
   }, [myUserId]);
 
-  // Cleanup stale cursors (older than 10 seconds)
+  // Cleanup stale cursors (in-memory, no DB)
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
-      const tenSecondsAgo = new Date(Date.now() - 10000).toISOString();
+      const tenSecondsAgo = Date.now() - 10000;
       
-      supabase
-        .from("cursors")
-        .delete()
-        .lt("updated_at", tenSecondsAgo)
-        .then(({ error }) => {
-          if (error) {
-            console.error("Error cleaning up stale cursors:", error);
+      setCursors((prev) => {
+        const next = new Map(prev);
+        let hasChanges = false;
+        
+        for (const [userId, cursor] of next.entries()) {
+          if (cursor.timestamp < tenSecondsAgo) {
+            next.delete(userId);
+            hasChanges = true;
           }
-        });
+        }
+        
+        return hasChanges ? next : prev;
+      });
     }, 5000); // Run cleanup every 5 seconds
 
     return () => clearInterval(cleanupInterval);

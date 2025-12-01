@@ -1,5 +1,8 @@
 -- Real-time Cursors Table
--- This table stores the current cursor position of each connected user
+-- DEPRECATED: This table is no longer used for realtime cursor updates.
+-- Cursor positions are now transmitted via Supabase Broadcast channels only (no DB storage).
+-- This table is kept for backward compatibility but is not actively used.
+-- See: src/three/hooks/useRealtimeCursors.ts for the broadcast implementation.
 CREATE TABLE IF NOT EXISTS cursors (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id TEXT UNIQUE NOT NULL,

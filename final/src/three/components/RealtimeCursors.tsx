@@ -1,7 +1,8 @@
 import { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import type { CursorData } from "@/utils/supabase";
+import gsap from "gsap";
+import type { CursorData } from "@/three/hooks/useRealtimeCursors";
 
 interface RealtimeCursorsProps {
   cursors: CursorData[];
@@ -48,6 +49,7 @@ interface CursorLightProps {
 }
 
 function CursorLight({ gridX, gridZ, color, isMe }: CursorLightProps) {
+  const groupRef = useRef<THREE.Group>(null);
   const lightRef = useRef<THREE.PointLight>(null);
   const meshRef = useRef<THREE.Mesh>(null);
   const ringRef = useRef<THREE.Mesh>(null);
@@ -77,6 +79,20 @@ function CursorLight({ gridX, gridZ, color, isMe }: CursorLightProps) {
     };
   }, [materials]);
 
+  // GSAP smooth interpolation for position changes
+  useEffect(() => {
+    if (groupRef.current) {
+      // Animate to new position smoothly
+      gsap.to(groupRef.current.position, {
+        x: gridX,
+        z: gridZ,
+        duration: 0.3, // 300ms smooth transition
+        ease: "power2.out", // Smooth easing
+        overwrite: true, // Cancel previous animations
+      });
+    }
+  }, [gridX, gridZ]);
+
   useFrame(({ clock }) => {
     if (lightRef.current) {
       const pulse = Math.sin(clock.getElapsedTime() * (isMe ? 4 : 3)) * 0.3 + 0.7;
@@ -99,7 +115,7 @@ function CursorLight({ gridX, gridZ, color, isMe }: CursorLightProps) {
   });
 
   return (
-    <group position={[gridX, 0, gridZ]}>
+    <group ref={groupRef}>
       {/* Point light for illumination */}
       <pointLight
         ref={lightRef}
