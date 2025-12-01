@@ -49,7 +49,7 @@ export function useProjectionControls() {
         step: 0.01,
       },
       backgroundLightMode: {
-        value: "buildings" as "buildings" | "cursors",
+        value: "cursors" as "buildings" | "cursors",
         options: ["buildings", "cursors"],
         label: "Background Light",
       },

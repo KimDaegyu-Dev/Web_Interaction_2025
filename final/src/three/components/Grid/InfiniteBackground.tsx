@@ -53,11 +53,6 @@ vec3 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist, float weight
   color = mix(color, color3, t2);
   color = mix(color, color4, t3);
   
-  // OPTIMIZED: Use fract instead of sin (much faster!)
-  float wave = fract(worldPos.x * 0.15 + uTime * 0.5);
-  wave *= fract(worldPos.y * 0.15 + uTime * 0.3);
-  color += vec3(0.02, 0.01, 0.03) * wave;
-  
   // Smooth falloff at edges
   float falloff = 1.0 - smoothstep(0.5, 1.0, dist);
   
@@ -160,10 +155,6 @@ void main() {
   // Combine gradient and grid
   vec3 finalColor = finalGradient + gridColor * grid;
   
-  // Add slight vignette effect
-  float vignette = 1.0 - length(vUv - 0.5) * 0.3;
-  finalColor *= vignette;
-  
   gl_FragColor = vec4(finalColor, 1.0);
 }
 `;
@@ -187,7 +178,7 @@ export function InfiniteBackground({
   objects = [], 
   cursors = [], 
   myCursor = null,
-  lightMode = "buildings" 
+  lightMode = "cursors" 
 }: InfiniteBackgroundProps) {
   const { camera, clock } = useThree();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
