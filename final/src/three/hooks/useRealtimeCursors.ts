@@ -58,49 +58,9 @@ export function useRealtimeCursors() {
   const channelRef = useRef<RealtimeChannel | null>(null);
   
   // RxJS Subject for cursor updates
-  const cursorUpdateSubject = useRef<Subject<CursorUpdate>>(new Subject());
+  const cursorUpdateSubject = useRef<Subject<CursorUpdate>>(new Subject()  );
 
-  // Setup RxJS throttling and broadcast
-  useEffect(() => {
-    const subscription = cursorUpdateSubject.current
-      .pipe(
-        throttleTime(200, undefined, { leading: true, trailing: true }) // 200ms throttle (5 updates/sec)
-      )
-      .subscribe(({ gridX, gridZ }) => {
-        // Broadcast cursor position instead of DB upsert
-        if (channelRef.current) {
-          channelRef.current.send({
-            type: "broadcast",
-            event: "cursor-move",
-            payload: {
-              user_id: myUserId,
-              grid_x: gridX,
-              grid_z: gridZ,
-              color: myColor,
-              timestamp: Date.now(),
-            } as BroadcastCursorPayload,
-          });
-        }
-      });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [myUserId, myColor]);
-
-  // Update my cursor position
-  const updateMyCursor = useCallback(
-    (gridX: number, gridZ: number) => {
-      // Update local state immediately for responsive UI
-      setMyCursorPosition({ gridX, gridZ });
-
-      // Emit to RxJS subject for throttled broadcast
-      cursorUpdateSubject.current.next({ gridX, gridZ });
-    },
-    []
-  );
-
-  // Subscribe to broadcast cursor updates
+  // Subscribe to broadcast cursor updates FIRST (before RxJS setup)
   useEffect(() => {
     // Create broadcast channel
     const channel = supabase
@@ -117,6 +77,8 @@ export function useRealtimeCursors() {
 
           // Ignore my own cursor (extra safety)
           if (cursor.user_id === myUserId) return;
+
+          console.log("Received cursor:", cursor); // Debug log
 
           setCursors((prev) => {
             const next = new Map(prev);
@@ -158,6 +120,49 @@ export function useRealtimeCursors() {
       }
     };
   }, [myUserId]);
+
+  // Setup RxJS throttling and broadcast (runs AFTER channel is set up)
+  useEffect(() => {
+    const subscription = cursorUpdateSubject.current
+      .pipe(
+        throttleTime(100, undefined, { leading: true, trailing: true }) // 100ms throttle (10 updates/sec)
+      )
+      .subscribe(({ gridX, gridZ }) => {
+        // Broadcast cursor position instead of DB upsert
+        if (channelRef.current) {
+          console.log("Broadcasting cursor:", gridX, gridZ); // Debug log
+          channelRef.current.send({
+            type: "broadcast",
+            event: "cursor-move",
+            payload: {
+              user_id: myUserId,
+              grid_x: gridX,
+              grid_z: gridZ,
+              color: myColor,
+              timestamp: Date.now(),
+            } as BroadcastCursorPayload,
+          });
+        } else {
+          console.warn("Channel not ready yet"); // Debug warning
+        }
+      });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [myUserId, myColor]);
+
+  // Update my cursor position
+  const updateMyCursor = useCallback(
+    (gridX: number, gridZ: number) => {
+      // Update local state immediately for responsive UI
+      setMyCursorPosition({ gridX, gridZ });
+
+      // Emit to RxJS subject for throttled broadcast
+      cursorUpdateSubject.current.next({ gridX, gridZ });
+    },
+    []
+  );
 
   // Cleanup stale cursors (in-memory, no DB)
   useEffect(() => {

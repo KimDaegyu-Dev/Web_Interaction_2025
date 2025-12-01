@@ -1,6 +1,7 @@
 import { useThree, useFrame } from "@react-three/fiber";
 import { useMemo, useRef, useEffect } from "react";
 import * as THREE from "three";
+import gsap from "gsap";
 import { calculateObliqueMatrix } from "../../utils/projection";
 import { useProjectionControls } from "../../hooks/useProjectionControls";
 import { useObliqueControls } from "../../hooks/useObliqueControls";
@@ -201,9 +202,9 @@ export function InfiniteBackground({
       uInverseOblique: { value: new THREE.Matrix4() },
       uGridSize: { value: GRID_CONFIG.CELL_SIZE },
       uTime: { value: 0 },
-      uBuildingPositions: { value: new Array(50).fill(new THREE.Vector3(0, 0, 0)) },
+      uBuildingPositions: { value: Array.from({ length: 50 }, () => new THREE.Vector3(0, 0, 0)) },
       uBuildingCount: { value: 0 },
-      uCursorPositions: { value: new Array(50).fill(new THREE.Vector3(0, 0, 0)) },
+      uCursorPositions: { value: Array.from({ length: 50 }, () => new THREE.Vector3(0, 0, 0)) },
       uCursorCount: { value: 0 },
       uLightMode: { value: 0 }, // 0 = buildings, 1 = cursors
       uInfluenceRadius: { value: GRID_CONFIG.CURSOR_INFLUENCE_RADIUS },
@@ -295,16 +296,50 @@ export function InfiniteBackground({
       allCursors.push({ grid_x: myCursor.gridX, grid_z: myCursor.gridZ });
     }
     
-    const positions = allCursors.slice(0, 50).map(cursor => 
+    console.log("InfiniteBackground: Updating cursors", allCursors.length, allCursors); // Debug log
+    
+    const targetPositions = allCursors.slice(0, 50).map(cursor => 
       new THREE.Vector3(cursor.grid_x, 0, cursor.grid_z)
     );
     
-    // Fill remaining slots with zeros
-    while (positions.length < 50) {
-      positions.push(new THREE.Vector3(0, 0, 0));
+    // GSAP smooth interpolation for each cursor position
+    const currentPositions = materialRef.current.uniforms.uCursorPositions.value;
+    
+    // Update existing cursors with GSAP animation
+    targetPositions.forEach((targetPos, index) => {
+      if (currentPositions[index]) {
+        // Only animate if position actually changed
+        const current = currentPositions[index];
+        if (current.x !== targetPos.x || current.z !== targetPos.z) {
+          gsap.to(current, {
+            x: targetPos.x,
+            y: targetPos.y,
+            z: targetPos.z,
+            duration: 0.3, // 300ms smooth transition (same as cursor light)
+            ease: "power2.out", // Smooth easing
+            overwrite: true, // Cancel previous animations
+          });
+        }
+      } else {
+        // This shouldn't happen with proper initialization, but handle it anyway
+        currentPositions[index] = targetPos.clone();
+      }
+    });
+    
+    // Reset positions beyond the cursor count to (0,0,0)
+    for (let i = targetPositions.length; i < 50; i++) {
+      if (currentPositions[i]) {
+        gsap.to(currentPositions[i], {
+          x: 0,
+          y: 0,
+          z: 0,
+          duration: 0.3,
+          ease: "power2.out",
+          overwrite: true,
+        });
+      }
     }
     
-    materialRef.current.uniforms.uCursorPositions.value = positions;
     materialRef.current.uniforms.uCursorCount.value = Math.min(allCursors.length, 50);
   }, [cursors, myCursor]);
 
