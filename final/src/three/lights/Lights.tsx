@@ -1,6 +1,6 @@
-import { useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
+import { useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import * as THREE from "three";
 
 interface LightsProps {
   isLightMode?: boolean;
@@ -25,7 +25,7 @@ export function Lights({ isLightMode = false }: LightsProps) {
 
   // Adjust lighting based on mode
   const ambientIntensity = isLightMode ? 0.8 : 0.3;
-  const directionalIntensity = isLightMode ? 1.5 : 2.5;
+  const directionalIntensity = isLightMode ? 3.5 : 2.5;
 
   return (
     <>
@@ -49,4 +49,3 @@ export function Lights({ isLightMode = false }: LightsProps) {
     </>
   );
 }
-

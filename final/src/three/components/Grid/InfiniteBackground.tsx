@@ -7,7 +7,6 @@ import { useProjectionControls } from "../../hooks/useProjectionControls";
 import { useObliqueControls } from "../../hooks/useObliqueControls";
 import { GRID_CONFIG } from "../../config/grid";
 
-
 const vertexShader = `
 varying vec2 vUv;
 void main() {
@@ -35,14 +34,15 @@ uniform vec3 uCameraPosition; // Camera position for LOD
 varying vec2 vUv;
 
 // Optimized gradient colors with cluster weighting
-vec3 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist, float weight) {
+// Optimized gradient colors with cluster weighting
+vec4 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist, float weight) {
   float dist = length(worldPos - centerPos) / maxDist;
   
-  // Define color palette
-  vec3 color1 = vec3(0.15, 0.2, 0.45);   // Bright blue-purple (center)
-  vec3 color2 = vec3(0.25, 0.15, 0.5);   // Bright purple
-  vec3 color3 = vec3(0.2, 0.1, 0.4);     // Purple
-  vec3 color4 = vec3(0.1, 0.15, 0.35);   // Deep blue (edge)
+  // Define color palette (Soft Pastel Orange/Yellow)
+  vec3 color1 = vec3(1.0, 0.95, 0.8);   // Very pale yellow (center)
+  vec3 color2 = vec3(1.0, 0.9, 0.75);   // Soft cream
+  vec3 color3 = vec3(1.0, 0.85, 0.7);   // Pastel orange
+  vec3 color4 = vec3(1.0, 0.8, 0.65);   // Soft apricot (edge)
   
   // Simplified gradient without branches (better GPU performance)
   float t1 = smoothstep(0.0, 0.3, dist);
@@ -60,7 +60,7 @@ vec3 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist, float weight
   // Normalize weight: 1 building = 1.0, 5+ buildings = 2.0 (capped)
   float normalizedWeight = min(weight / 3.0, 2.0);
   
-  return color * falloff * normalizedWeight;
+  return vec4(color, falloff * normalizedWeight);
 }
 
 // Grid line function with anti-aliasing
@@ -104,8 +104,8 @@ void main() {
   // 5. Create beautiful gradient background
   vec2 worldPos = intersectPoint.xz;
   
-  // Base dark background
-  vec3 baseColor = vec3(0.08, 0.1, 0.25);
+  // Base warm pastel lavender background
+  vec3 baseColor = vec3(0.9, 0.88, 0.95);
   vec3 finalGradient = baseColor;
   
   // OPTIMIZED: Single loop for both gradient and distance calculation
@@ -130,14 +130,18 @@ void main() {
       if (distToLight < maxInfluenceRadius) {
         // Extract weight from Y component (building count in cluster)
         float weight = uLightMode == 0 ? uBuildingPositions[i].y : 1.0;
-        vec3 gradient = getGradientColor(worldPos, lightPos, maxInfluenceRadius, weight);
-        finalGradient += gradient;
+        vec4 gradient = getGradientColor(worldPos, lightPos, maxInfluenceRadius, weight);
+        
+        // Soft additive blending for glow effect
+        // This prevents dark edges by only adding light
+        float alpha = gradient.a * 0.6; // Reduce overall intensity
+        finalGradient = mix(finalGradient, gradient.rgb, alpha);
       }
     }
   }
   
-  // Clamp to prevent over-brightening
-  finalGradient = min(finalGradient, vec3(0.5, 0.5, 0.7));
+  // Clamp to prevent weird colors
+  finalGradient = clamp(finalGradient, vec3(0.0), vec3(1.0));
   
   // 6. Add subtle grid lines (only near light sources for performance)
   float grid = 0.0;
@@ -146,11 +150,12 @@ void main() {
   // Only calculate grid if near light sources
   if (distFade > 0.01) {
     vec2 gridUv = worldPos / uGridSize * 2.0;
-    grid = gridLine(gridUv, 1.5) * distFade * 0.2;
+    // Increase intensity to make color visible
+    grid = gridLine(gridUv, 1.5) * distFade * 0.8;
   }
   
-  // Grid color with subtle glow
-  vec3 gridColor = vec3(0.3, 0.4, 0.6);
+  // Grid color (Yellow-Orange)
+  vec3 gridColor = vec3(1.0, 0.7, 0.3);
   
   // Combine gradient and grid
   vec3 finalColor = finalGradient + gridColor * grid;
@@ -174,15 +179,15 @@ interface InfiniteBackgroundProps {
   lightMode?: "buildings" | "cursors";
 }
 
-export function InfiniteBackground({ 
-  objects = [], 
-  cursors = [], 
+export function InfiniteBackground({
+  objects = [],
+  cursors = [],
   myCursor = null,
-  lightMode = "cursors" 
+  lightMode = "cursors",
 }: InfiniteBackgroundProps) {
   const { camera, clock } = useThree();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
-  
+
   // Controls for Oblique Matrix
   const projectionParams = useProjectionControls();
   const { getPanOffset } = useObliqueControls();
@@ -193,15 +198,19 @@ export function InfiniteBackground({
       uInverseOblique: { value: new THREE.Matrix4() },
       uGridSize: { value: GRID_CONFIG.CELL_SIZE },
       uTime: { value: 0 },
-      uBuildingPositions: { value: Array.from({ length: 50 }, () => new THREE.Vector3(0, 0, 0)) },
+      uBuildingPositions: {
+        value: Array.from({ length: 50 }, () => new THREE.Vector3(0, 0, 0)),
+      },
       uBuildingCount: { value: 0 },
-      uCursorPositions: { value: Array.from({ length: 50 }, () => new THREE.Vector3(0, 0, 0)) },
+      uCursorPositions: {
+        value: Array.from({ length: 50 }, () => new THREE.Vector3(0, 0, 0)),
+      },
       uCursorCount: { value: 0 },
       uLightMode: { value: 0 }, // 0 = buildings, 1 = cursors
       uInfluenceRadius: { value: GRID_CONFIG.CURSOR_INFLUENCE_RADIUS },
       uCameraPosition: { value: new THREE.Vector3() },
     }),
-    []
+    [],
   );
 
   // Temporary objects to avoid GC
@@ -211,91 +220,107 @@ export function InfiniteBackground({
   // SPATIAL HASHING CLUSTERING: Group buildings into clusters
   useEffect(() => {
     if (!materialRef.current) return;
-    
+
     const CLUSTER_SIZE = 10; // 10x10 unit grid cells
     const MAX_CLUSTERS = 50; // Maximum clusters to send to shader
-    
+
     // 1. Create clusters using spatial hashing
-    const clusterMap = new Map<string, {
-      buildings: typeof objects;
-      centerX: number;
-      centerZ: number;
-      count: number;
-    }>();
-    
-    objects.forEach(obj => {
+    const clusterMap = new Map<
+      string,
+      {
+        buildings: typeof objects;
+        centerX: number;
+        centerZ: number;
+        count: number;
+      }
+    >();
+
+    objects.forEach((obj) => {
       // Determine which cluster this building belongs to
       const clusterX = Math.floor(obj.position[0] / CLUSTER_SIZE);
       const clusterZ = Math.floor(obj.position[2] / CLUSTER_SIZE);
       const key = `${clusterX},${clusterZ}`;
-      
+
       if (!clusterMap.has(key)) {
         clusterMap.set(key, {
           buildings: [],
           centerX: 0,
           centerZ: 0,
-          count: 0
+          count: 0,
         });
       }
-      
+
       clusterMap.get(key)!.buildings.push(obj);
     });
-    
+
     // 2. Calculate cluster centers (weighted average)
-    const clusters = Array.from(clusterMap.values()).map(cluster => {
-      const avgX = cluster.buildings.reduce((sum, b) => sum + b.position[0], 0) / cluster.buildings.length;
-      const avgZ = cluster.buildings.reduce((sum, b) => sum + b.position[2], 0) / cluster.buildings.length;
-      
+    const clusters = Array.from(clusterMap.values()).map((cluster) => {
+      const avgX =
+        cluster.buildings.reduce((sum, b) => sum + b.position[0], 0) /
+        cluster.buildings.length;
+      const avgZ =
+        cluster.buildings.reduce((sum, b) => sum + b.position[2], 0) /
+        cluster.buildings.length;
+
       return {
         centerX: avgX,
         centerZ: avgZ,
         count: cluster.buildings.length,
         distance: Math.sqrt(
           Math.pow(avgX - camera.position.x, 2) +
-          Math.pow(avgZ - camera.position.z, 2)
-        )
+            Math.pow(avgZ - camera.position.z, 2),
+        ),
       };
     });
-    
+
     // 3. Sort by distance to camera and take nearest clusters
     const nearestClusters = clusters
       .sort((a, b) => a.distance - b.distance)
       .slice(0, MAX_CLUSTERS);
-    
+
     // 4. Convert to shader format
-    const positions = nearestClusters.map(cluster => 
-      new THREE.Vector3(cluster.centerX, cluster.count, cluster.centerZ)
+    const positions = nearestClusters.map(
+      (cluster) =>
+        new THREE.Vector3(cluster.centerX, cluster.count, cluster.centerZ),
       // Y component stores building count for weighting
     );
-    
+
     // Fill remaining slots with zeros
     while (positions.length < 50) {
       positions.push(new THREE.Vector3(0, 0, 0));
     }
-    
+
     materialRef.current.uniforms.uBuildingPositions.value = positions;
-    materialRef.current.uniforms.uBuildingCount.value = Math.min(nearestClusters.length, 50);
+    materialRef.current.uniforms.uBuildingCount.value = Math.min(
+      nearestClusters.length,
+      50,
+    );
   }, [objects, camera.position]);
 
   // Update cursor positions when cursors or myCursor change
   useEffect(() => {
     if (!materialRef.current) return;
-    
+
     // Combine all cursors (other users + my cursor)
     const allCursors = [...cursors];
     if (myCursor) {
       allCursors.push({ grid_x: myCursor.gridX, grid_z: myCursor.gridZ });
     }
-    
-    console.log("InfiniteBackground: Updating cursors", allCursors.length, allCursors); // Debug log
-    
-    const targetPositions = allCursors.slice(0, 50).map(cursor => 
-      new THREE.Vector3(cursor.grid_x, 0, cursor.grid_z)
-    );
-    
+
+    console.log(
+      "InfiniteBackground: Updating cursors",
+      allCursors.length,
+      allCursors,
+    ); // Debug log
+
+    const targetPositions = allCursors
+      .slice(0, 50)
+      .map((cursor) => new THREE.Vector3(cursor.grid_x, 0, cursor.grid_z));
+
     // GSAP smooth interpolation for each cursor position
-    const currentPositions = materialRef.current.uniforms.uCursorPositions.value;
-    
+    const currentPositions =
+      materialRef.current.uniforms.uCursorPositions.value;
+
     // Update existing cursors with GSAP animation
     targetPositions.forEach((targetPos, index) => {
       if (currentPositions[index]) {
@@ -316,7 +341,7 @@ export function InfiniteBackground({
         currentPositions[index] = targetPos.clone();
       }
     });
-    
+
     // Reset positions beyond the cursor count to (0,0,0)
     for (let i = targetPositions.length; i < 50; i++) {
       if (currentPositions[i]) {
@@ -330,14 +355,18 @@ export function InfiniteBackground({
         });
       }
     }
-    
-    materialRef.current.uniforms.uCursorCount.value = Math.min(allCursors.length, 50);
+
+    materialRef.current.uniforms.uCursorCount.value = Math.min(
+      allCursors.length,
+      50,
+    );
   }, [cursors, myCursor]);
 
   // Update light mode
   useEffect(() => {
     if (!materialRef.current) return;
-    materialRef.current.uniforms.uLightMode.value = lightMode === "buildings" ? 0 : 1;
+    materialRef.current.uniforms.uLightMode.value =
+      lightMode === "buildings" ? 0 : 1;
   }, [lightMode]);
 
   useFrame(() => {
@@ -350,9 +379,11 @@ export function InfiniteBackground({
     materialRef.current.uniforms.uTime.value = clock.getElapsedTime();
 
     // 1. Calculate Inverse ViewProjection Matrix (camera changes every frame)
-    tempMatrix.copy(camera.matrixWorld).multiply(camera.projectionMatrixInverse);
+    tempMatrix
+      .copy(camera.matrixWorld)
+      .multiply(camera.projectionMatrixInverse);
     materialRef.current.uniforms.uInverseViewProj.value.copy(tempMatrix);
-    
+
     // 2. Calculate Inverse Oblique Matrix (panOffset changes when camera moves)
     const panOffset = getPanOffset();
     const obliqueMatrix = calculateObliqueMatrix(projectionParams, panOffset);
@@ -374,4 +405,3 @@ export function InfiniteBackground({
     </mesh>
   );
 }
-
