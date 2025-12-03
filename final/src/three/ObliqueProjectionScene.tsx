@@ -203,7 +203,6 @@ function Scene({
           objects={objects}
           clickedObjectId={clickedObjectId}
           onObjectClick={handleObjectClick}
-          onRequestStateChange={setObjectState}
           cursors={cursors}
           myCursor={
             hoveredCell
