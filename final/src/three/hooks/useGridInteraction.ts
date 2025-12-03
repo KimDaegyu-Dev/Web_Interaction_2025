@@ -23,33 +23,29 @@ interface PendingAction {
   buildingId?: string;
 }
 
-export function useGridInteraction() {
+export interface InteractionHandlers {
+  onEmptyCellClick: (x: number, z: number) => void;
+  onObjectClick: (object: PlacedObject) => void;
+  onGlobalSwitchClick: () => void;
+}
+
+export function useGridInteraction({
+  onEmptyCellClick,
+  onObjectClick,
+  onGlobalSwitchClick,
+}: InteractionHandlers) {
   const [hoveredCell, setHoveredCell] = useState<GridCell | null>(null);
   const [clickedObjectId, setClickedObjectId] = useState<string | null>(null);
-  const [modalMode, setModalMode] = useState<ModalMode>(null);
-  const [pendingAction, setPendingAction] = useState<PendingAction | null>(
-    null,
-  );
-  const [selectedBuilding, setSelectedBuilding] = useState<PlacedObject | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
+  
   const {
     objects,
-    placeObject,
-    deleteObject,
-    updateObject,
     setObjectState,
-    restoreRestState,
     setAllObjectsState,
     syncFromExternal,
   } = usePlacedObjects();
 
   const {
     buildings: remoteBuildings,
-    isLoading,
-    createBuilding,
-    deleteBuilding,
-    updateBuilding,
   } = useBuildingPersistence();
 
   // Sync Supabase buildings into renderable glTF objects
@@ -84,67 +80,45 @@ export function useGridInteraction() {
     setHoveredCell(null);
   }, []);
 
-  // 그리드 클릭 시 새로운 오브젝트를 배치
+  // 그리드 클릭 핸들러 (통합됨)
   const onCellClick = useCallback(
     (e: ThreeEvent<MouseEvent>, x: number, y: number, z: number) => {
       e.stopPropagation();
+      
+      // 1. Global Switch Check (Fixed Position: -10, 0, -10)
+      if (x === -10 && z === -10) {
+        onGlobalSwitchClick();
+        return;
+      }
+
       const key = `${x}_${z}`;
       const existing = objectsByCell.get(key);
 
       if (existing) {
-        // 건물이 있는 그리드 클릭 시 건물 클릭 이벤트로 처리
+        // 2. Existing Object Click
         setClickedObjectId(existing.id);
-        // TODO: 건물로 카메라 줌인 로직은 별도로 구현 필요
+        onObjectClick(existing);
       } else {
-        setSelectedBuilding(null);
-        setPendingAction({ mode: "create", position: [x, y, z] });
-        setModalMode("create");
-        setError(null);
+        // 3. Empty Cell Click
+        setClickedObjectId(null);
+        onEmptyCellClick(x, z);
       }
     },
-    [objectsByCell],
+    [objectsByCell, onGlobalSwitchClick, onObjectClick, onEmptyCellClick],
   );
 
-  const onObjectClick = useCallback(
+  // 기존 오브젝트 클릭 핸들러 (백업용, 혹은 직접 클릭 시 사용)
+  const onObjectClickInternal = useCallback(
     (e: ThreeEvent<MouseEvent>, objectId: string) => {
       e.stopPropagation();
       const matchingObject = objects.find((o) => o.id === objectId);
       if (matchingObject) {
-        // 건물 클릭 시 카메라 줌인
         setClickedObjectId(objectId);
-        // TODO: 건물로 카메라 줌인 로직은 별도로 구현 필요
-        
-        // TODO: 건물 수정 부분 구현
-        // setSelectedBuilding(matchingObject);
-        // setPendingAction({ mode: "edit", buildingId: objectId });
-        // setModalMode("edit");
-        // setError(null);
-        return;
+        onObjectClick(matchingObject);
       }
-
-      // fallback: play clicked animation if not synced yet
-      setObjectState(objectId, "clicked");
     },
-    [objects, setObjectState],
+    [objects, onObjectClick],
   );
-
-  // 호버 이벤트 제거 - 클릭 이벤트로 대체
-  // const onObjectPointerOver = useCallback(
-  //   (e: ThreeEvent<PointerEvent>, objectId: string) => {
-  //     e.stopPropagation();
-  //     setHoveredObjectId(objectId);
-  //   },
-  //   [],
-  // );
-
-  // const onObjectPointerOut = useCallback(
-  //   (e: ThreeEvent<PointerEvent>, objectId: string) => {
-  //     e.stopPropagation();
-  //     setHoveredObjectId((prev) => (prev === objectId ? null : prev));
-  //     restoreRestState(objectId);
-  //   },
-  //   [restoreRestState],
-  // );
 
   const setGlobalState = useCallback(
     (state: ObjectStateKey) => {
@@ -153,92 +127,15 @@ export function useGridInteraction() {
     [setAllObjectsState],
   );
 
-  const handleModalSubmit = useCallback(
-    async (data: {
-      password: string;
-      title?: string;
-      author?: string;
-      message1?: string;
-      message2?: string;
-      meshIndex: number;
-    }) => {
-      if (!pendingAction) return;
-
-      setError(null);
-
-      try {
-        if (pendingAction.mode === "create" && pendingAction.position) {
-          const color = Math.random() * 0xffffff;
-          await createBuilding(
-            {
-              position_x: pendingAction.position[0],
-              position_y: pendingAction.position[1],
-              position_z: pendingAction.position[2],
-              color: Math.floor(color),
-              mesh_index: data.meshIndex,
-              title: data.title,
-              author: data.author,
-              message1: data.message1,
-              message2: data.message2,
-            },
-            data.password,
-          );
-          setModalMode(null);
-          setPendingAction(null);
-        } else if (pendingAction.mode === "edit" && pendingAction.buildingId) {
-          await updateBuilding(
-            pendingAction.buildingId,
-            {
-              title: data.title,
-              author: data.author,
-              message1: data.message1,
-              message2: data.message2,
-            },
-            data.password,
-          );
-          setModalMode(null);
-          setPendingAction(null);
-        } else if (pendingAction.mode === "delete" && pendingAction.buildingId) {
-          await deleteBuilding(pendingAction.buildingId, data.password);
-          setModalMode(null);
-          setPendingAction(null);
-        }
-      } catch (err) {
-        console.error("Error:", err);
-        const errorMessage =
-          err instanceof Error
-            ? err.message
-            : "작업 중 오류가 발생했습니다. 패스워드를 확인해주세요.";
-        setError(errorMessage);
-      }
-    },
-    [pendingAction, createBuilding, updateBuilding, deleteBuilding],
-  );
-
-
-  const handleModalClose = useCallback(() => {
-    setModalMode(null);
-    setPendingAction(null);
-    setSelectedBuilding(null);
-    setError(null);
-  }, []);
-
   return {
     hoveredCell,
     clickedObjectId,
     objects,
-    modalMode,
-    selectedBuilding,
-    error,
     onCellPointerOver,
     onCellPointerOut,
     onCellClick,
-    onObjectClick,
-    // onObjectPointerOver,
-    // onObjectPointerOut,
+    onObjectClick: onObjectClickInternal,
     setGlobalState,
     setObjectState,
-    handleModalSubmit,
-    handleModalClose,
   };
 }

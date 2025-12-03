@@ -21,7 +21,6 @@ import { useGlobalSwitch } from "./hooks/useGlobalSwitch";
 import { screenToGridCoords } from "./utils/raycasting";
 import { calculateObliqueMatrix } from "./utils/projection";
 import { GRID_CONFIG } from "./config/grid";
-import { BuildingModal } from "@/components/BuildingModal";
 
 interface SceneProps {
   gridInteraction: ReturnType<typeof useGridInteraction>;
@@ -228,15 +227,34 @@ function Scene({
 }
 
 export function ObliqueProjectionScene() {
-  const gridInteraction = useGridInteraction();
-  const {
-    modalMode: buildingModalMode,
-    selectedBuilding,
-    error,
-    handleModalSubmit,
-    handleModalClose,
-  } = gridInteraction;
   const navigate = useNavigate();
+
+  // Interaction Handlers
+  const onEmptyCellClick = useCallback(
+    (x: number, z: number) => {
+      navigate(`/create?x=${x}&z=${z}`);
+    },
+    [navigate],
+  );
+
+  const onObjectClick = useCallback(
+    (object: any) => {
+      navigate(`/details/${object.id}`);
+    },
+    [navigate],
+  );
+
+  const onGlobalSwitchClick = useCallback(() => {
+    // Navigate to a specific details page for the global switch or handle it differently
+    navigate(`/details/global-switch`);
+  }, [navigate]);
+
+  const gridInteraction = useGridInteraction({
+    onEmptyCellClick,
+    onObjectClick,
+    onGlobalSwitchClick,
+  });
+
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   // 초기 마우스 위치를 화면 중앙으로 설정
@@ -338,16 +356,6 @@ export function ObliqueProjectionScene() {
         thresholdY={300}
         mousePosition={mousePosition}
       />
-      {buildingModalMode && (
-        <BuildingModal
-          isOpen={!!buildingModalMode}
-          onClose={handleModalClose}
-          onSubmit={handleModalSubmit}
-          mode={buildingModalMode}
-          building={selectedBuilding || undefined}
-          error={error}
-        />
-      )}
     </div>
   );
 }
