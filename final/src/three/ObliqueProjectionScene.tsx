@@ -21,20 +21,21 @@ import { useGlobalSwitch } from "./hooks/useGlobalSwitch";
 import { screenToGridCoords } from "./utils/raycasting";
 import { calculateObliqueMatrix } from "./utils/projection";
 import { GRID_CONFIG } from "./config/grid";
+import { ViewportGUI, type ControlsRef } from "@/components/ViewportGUI";
+import { useCameraStore } from "@/stores/cameraStore";
 
 interface SceneProps {
   gridInteraction: ReturnType<typeof useGridInteraction>;
   mousePosition: { x: number; y: number } | null;
-  controlsRef: React.MutableRefObject<{
-    getEdgeZone: () => {
-      left: boolean;
-      right: boolean;
-      top: boolean;
-      bottom: boolean;
-    };
-  } | null>;
+  controlsRef: React.MutableRefObject<ControlsRef | null>;
   navigate: (path: string) => void;
 }
+
+const INITIAL_CAMERA_STATE = {
+  x: 1.4083880776167703,
+  y: -5.275527020177157,
+  zoom: 0.03490000000000004,
+};
 
 function Scene({
   gridInteraction,
@@ -54,12 +55,29 @@ function Scene({
   const { isLightMode, toggleSwitch } = useGlobalSwitch();
 
   // ObliqueControls 초기화 (패닝 & 줌)
-  const { getPanOffset, getEdgeZone } = useObliqueControls();
+  const { getPanOffset, getEdgeZone, controls } = useObliqueControls();
+  const setCameraState = useCameraStore((state) => state.setCameraState);
 
   // controlsRef 업데이트
   useEffect(() => {
-    controlsRef.current = { getEdgeZone };
-  }, [controlsRef, getEdgeZone]);
+    controlsRef.current = {
+      getEdgeZone,
+      getPanOffset: () => {
+        const offset = getPanOffset();
+        return { x: offset.x, y: offset.y };
+      },
+      resetCamera: () => {
+        if (controls) {
+          controls.setState(
+            INITIAL_CAMERA_STATE.x,
+            INITIAL_CAMERA_STATE.y,
+            INITIAL_CAMERA_STATE.zoom
+          );
+          setCameraState(INITIAL_CAMERA_STATE);
+        }
+      },
+    };
+  }, [controlsRef, getEdgeZone, getPanOffset, controls, setCameraState]);
 
   // Grid Interaction (Shift + 클릭으로 큐브 생성)
   const {
@@ -194,6 +212,7 @@ function Scene({
             : null
         }
         lightMode={isLightMode ? "buildings" : "cursors"}
+        getPanOffset={getPanOffset}
       />
 
       {/* 오브젝트들 - Oblique 투영 적용 */}
@@ -228,6 +247,7 @@ function Scene({
 
 export function ObliqueProjectionScene() {
   const navigate = useNavigate();
+  const { toggleSwitch } = useGlobalSwitch();
 
   // Interaction Handlers
   const onEmptyCellClick = useCallback(
@@ -245,9 +265,8 @@ export function ObliqueProjectionScene() {
   );
 
   const onGlobalSwitchClick = useCallback(() => {
-    // Navigate to a specific details page for the global switch or handle it differently
-    navigate(`/details/global-switch`);
-  }, [navigate]);
+    toggleSwitch();
+  }, [toggleSwitch]);
 
   const gridInteraction = useGridInteraction({
     onEmptyCellClick,
@@ -273,14 +292,7 @@ export function ObliqueProjectionScene() {
   });
 
   // EdgeZoneIndicator를 위한 controls 참조
-  const controlsRef = useRef<{
-    getEdgeZone: () => {
-      left: boolean;
-      right: boolean;
-      top: boolean;
-      bottom: boolean;
-    };
-  } | null>(null);
+  const controlsRef = useRef<ControlsRef | null>(null);
 
   // Canvas 마운트 후 마우스 위치를 중앙으로 설정
   useEffect(() => {
@@ -342,6 +354,10 @@ export function ObliqueProjectionScene() {
           navigate={navigate}
         />
       </Canvas>
+      
+      {/* Viewport GUI (Reset Button & Distance Meter) */}
+      <ViewportGUI controlsRef={controlsRef} />
+
       {/* 가장자리 영역 표시기 */}
       <EdgeZoneIndicator
         getEdgeZone={() =>

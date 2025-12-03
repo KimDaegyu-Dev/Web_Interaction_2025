@@ -55,8 +55,27 @@ export interface CursorData {
 export function useRealtimeCursors() {
   const [cursors, setCursors] = useState<Map<string, CursorData>>(new Map());
   const [myCursorPosition, setMyCursorPosition] = useState<{ gridX: number; gridZ: number } | null>(null);
-  const [myUserId] = useState(() => generateUserId());
-  const [myColor] = useState(() => generateCursorColor());
+  const [myUserId] = useState(() => {
+    if (typeof window !== "undefined" && window.sessionStorage) {
+      const stored = window.sessionStorage.getItem("cursor_user_id");
+      if (stored) return stored;
+      const newId = generateUserId();
+      window.sessionStorage.setItem("cursor_user_id", newId);
+      return newId;
+    }
+    return generateUserId();
+  });
+
+  const [myColor] = useState(() => {
+    if (typeof window !== "undefined" && window.sessionStorage) {
+      const stored = window.sessionStorage.getItem("cursor_color");
+      if (stored) return stored;
+      const newColor = generateCursorColor();
+      window.sessionStorage.setItem("cursor_color", newColor);
+      return newColor;
+    }
+    return generateCursorColor();
+  });
   const channelRef = useRef<RealtimeChannel | null>(null);
   
   // RxJS Subject for cursor updates

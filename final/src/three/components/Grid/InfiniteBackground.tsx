@@ -4,7 +4,6 @@ import * as THREE from "three";
 import gsap from "gsap";
 import { calculateObliqueMatrix } from "../../utils/projection";
 import { useProjectionControls } from "../../hooks/useProjectionControls";
-import { useObliqueControls } from "../../hooks/useObliqueControls";
 import { GRID_CONFIG } from "../../config/grid";
 
 const vertexShader = `
@@ -224,13 +223,15 @@ export function InfiniteBackground({
   cursors = [],
   myCursor = null,
   lightMode = "cursors",
-}: InfiniteBackgroundProps) {
+  getPanOffset,
+}: InfiniteBackgroundProps & { getPanOffset: () => THREE.Vector3 }) {
   const { camera, clock } = useThree();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
 
   // Controls for Oblique Matrix
   const projectionParams = useProjectionControls();
-  const { getPanOffset } = useObliqueControls();
+  // Removed internal useObliqueControls
+
 
   const uniforms = useMemo(
     () => ({
