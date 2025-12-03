@@ -15,6 +15,7 @@ interface InstancedFlowerProps {
     gridX: number;
     gridZ: number;
   } | null;
+  isLightMode?: boolean;
 }
 
 export function InstancedFlower({
@@ -22,6 +23,7 @@ export function InstancedFlower({
   onObjectClick,
   cursors = [],
   myCursor = null,
+  isLightMode = false,
 }: InstancedFlowerProps) {
   const { nodes, scene } = useGLTF(MODEL_CONFIG.SHARED_GLB_URL) as any;
 
@@ -66,6 +68,9 @@ export function InstancedFlower({
   // 2. 가시성 로직 (메모리 문제 해결을 위해 다시 활성화 권장하지만, 일단 요청대로 전체 렌더링 유지 가능)
   // 성능 최적화를 위해 가시성 체크를 다시 켜는 것이 좋습니다.
   const visibleObjects = useMemo(() => {
+    // LightMode일 때는 모든 빌딩 표시
+    if (isLightMode) return objects;
+
     // 커서가 없으면 렌더링 안 함 (선택 사항)
     const allCursorPositions: { x: number; z: number }[] = [];
     cursors.forEach((c) =>
@@ -88,7 +93,7 @@ export function InstancedFlower({
         return dx * dx + dz * dz <= (influenceRadius - 6) ** 2;
       });
     });
-  }, [objects, cursors, myCursor]);
+  }, [objects, cursors, myCursor, isLightMode]);
 
   // 3. 각 메쉬 파츠별 InstancedMesh 참조를 저장할 배열
   const meshRefs = useRef<THREE.InstancedMesh[]>([]);

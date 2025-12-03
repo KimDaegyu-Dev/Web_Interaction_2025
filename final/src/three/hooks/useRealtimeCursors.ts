@@ -18,11 +18,13 @@ const generateCursorColor = () => {
     "#FF6B6B", // Red
     "#4ECDC4", // Cyan
     "#45B7D1", // Blue
-    "#FFA07A", // Light Salmon
+    // "#FFA07A", // Light Salmon - Removed to avoid blending with LightMode
     "#98D8C8", // Mint
-    "#F7DC6F", // Yellow
+    // "#F7DC6F", // Yellow - Removed to avoid blending with LightMode
     "#BB8FCE", // Purple
     "#85C1E2", // Sky Blue
+    "#2E9AFE", // Dodger Blue (Added for more contrast)
+    "#FF00FF", // Magenta (Added for more contrast)
   ];
   return colors[Math.floor(Math.random() * colors.length)];
 };

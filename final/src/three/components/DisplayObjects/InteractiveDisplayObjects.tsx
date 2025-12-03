@@ -13,6 +13,7 @@ interface InteractiveDisplayObjectsProps {
     gridX: number;
     gridZ: number;
   } | null;
+  isLightMode?: boolean;
 }
 
 export function InteractiveDisplayObjects({
@@ -21,6 +22,7 @@ export function InteractiveDisplayObjects({
   onObjectClick,
   cursors = [],
   myCursor = null,
+  isLightMode = false,
 }: InteractiveDisplayObjectsProps) {
   return (
     <>
@@ -29,6 +31,7 @@ export function InteractiveDisplayObjects({
         onObjectClick={onObjectClick}
         cursors={cursors}
         myCursor={myCursor}
+        isLightMode={isLightMode}
       />
       {/* Tooltips for clicked objects */}
       {objects.map((object) => {

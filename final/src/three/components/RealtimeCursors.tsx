@@ -22,7 +22,7 @@ export function RealtimeCursors({ cursors, myCursor }: RealtimeCursorsProps) {
           key="my-cursor"
           gridX={myCursor.gridX}
           gridZ={myCursor.gridZ}
-          color="#FFFFFF" // White/Silver for my cursor
+          color={myCursor.color}
           isMe={true}
         />
       )}

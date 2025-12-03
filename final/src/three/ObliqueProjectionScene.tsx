@@ -49,7 +49,7 @@ function Scene({
   const { scene, camera, gl } = useThree();
 
   // Real-time cursors
-  const { cursors, updateMyCursor } = useRealtimeCursors();
+  const { cursors, updateMyCursor, myColor } = useRealtimeCursors();
 
   // Global switch
   const { isLightMode, toggleSwitch } = useGlobalSwitch();
@@ -174,7 +174,7 @@ function Scene({
               ? {
                   gridX: hoveredCell.x,
                   gridZ: hoveredCell.z,
-                  color: "#FFFFFF",
+                  color: myColor,
                 }
               : null
           }
@@ -190,10 +190,11 @@ function Scene({
             ? {
                 gridX: hoveredCell.x,
                 gridZ: hoveredCell.z,
+                color: myColor,
               }
             : null
         }
-        lightMode={projectionParams.backgroundLightMode}
+        lightMode={isLightMode ? "buildings" : "cursors"}
       />
 
       {/* 오브젝트들 - Oblique 투영 적용 */}
@@ -212,6 +213,7 @@ function Scene({
                 }
               : null
           }
+          isLightMode={isLightMode}
         />
 
         {/* Global Light Switch - positioned at corner of grid */}

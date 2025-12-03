@@ -26,6 +26,7 @@ uniform float uTime;
 uniform vec3 uBuildingPositions[50]; // Max 50 buildings
 uniform int uBuildingCount;
 uniform vec3 uCursorPositions[50]; // Max 50 cursors
+uniform vec3 uCursorColors[50]; // Cursor colors
 uniform int uCursorCount;
 uniform int uLightMode; // 0 = buildings, 1 = cursors
 uniform float uInfluenceRadius; // Cursor/building influence radius
@@ -35,14 +36,24 @@ varying vec2 vUv;
 
 // Optimized gradient colors with cluster weighting
 // Optimized gradient colors with cluster weighting
-vec4 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist, float weight) {
+vec4 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist, float weight, vec3 targetColor, bool useCustomColor) {
   float dist = length(worldPos - centerPos) / maxDist;
   
-  // Define color palette (Soft Pastel Orange/Yellow)
-  vec3 color1 = vec3(1.0, 0.95, 0.8);   // Very pale yellow (center)
-  vec3 color2 = vec3(1.0, 0.9, 0.75);   // Soft cream
-  vec3 color3 = vec3(1.0, 0.85, 0.7);   // Pastel orange
-  vec3 color4 = vec3(1.0, 0.8, 0.65);   // Soft apricot (edge)
+  vec3 color1, color2, color3, color4;
+
+  if (useCustomColor) {
+    // Generate palette from targetColor (Reversed: Color -> White)
+    color1 = targetColor;                        // Center (Color)
+    color2 = mix(targetColor, vec3(1.0), 0.2);
+    color3 = mix(targetColor, vec3(1.0), 0.5);
+    color4 = mix(targetColor, vec3(1.0), 0.8);   // Edge (White)
+  } else {
+    // Define color palette (Soft Pastel Orange/Yellow)
+    color1 = vec3(1.0, 0.95, 0.8);   // Very pale yellow (center)
+    color2 = vec3(1.0, 0.9, 0.75);   // Soft cream
+    color3 = vec3(1.0, 0.85, 0.7);   // Pastel orange
+    color4 = vec3(1.0, 0.8, 0.65);   // Soft apricot (edge)
+  }
   
   // Simplified gradient without branches (better GPU performance)
   float t1 = smoothstep(0.0, 0.3, dist);
@@ -112,10 +123,9 @@ void main() {
   float maxInfluenceRadius = uInfluenceRadius; // Use shared config value
   float minDistToLight = 1000.0;
   
-  // Choose which positions to use based on light mode
+  // 1. Render Primary Items (Buildings if mode 0, Cursors if mode 1)
   int count = uLightMode == 0 ? uBuildingCount : uCursorCount;
   
-  // Early exit if no light sources
   if (count > 0) {
     for (int i = 0; i < 50; i++) {
       if (i >= count) break;
@@ -123,18 +133,47 @@ void main() {
       vec2 lightPos = uLightMode == 0 ? uBuildingPositions[i].xz : uCursorPositions[i].xz;
       float distToLight = length(worldPos - lightPos);
       
-      // Track minimum distance for grid fade
       minDistToLight = min(minDistToLight, distToLight);
       
-      // Only calculate gradient if within influence radius (early exit optimization)
       if (distToLight < maxInfluenceRadius) {
-        // Extract weight from Y component (building count in cluster)
         float weight = uLightMode == 0 ? uBuildingPositions[i].y : 1.0;
-        vec4 gradient = getGradientColor(worldPos, lightPos, maxInfluenceRadius, weight);
         
-        // Soft additive blending for glow effect
-        // This prevents dark edges by only adding light
-        float alpha = gradient.a * 0.6; // Reduce overall intensity
+        vec3 targetColor = vec3(0.0);
+        bool useCustomColor = false;
+        
+        if (uLightMode == 1) {
+          targetColor = uCursorColors[i];
+          useCustomColor = true;
+        }
+
+        vec4 gradient = getGradientColor(worldPos, lightPos, maxInfluenceRadius, weight, targetColor, useCustomColor);
+        
+        float alpha = gradient.a * 0.8;
+        finalGradient = mix(finalGradient, gradient.rgb, alpha);
+      }
+    }
+  }
+
+  // 2. If LightMode (0), ALSO render Cursors
+  if (uLightMode == 0 && uCursorCount > 0) {
+    for (int i = 0; i < 50; i++) {
+      if (i >= uCursorCount) break;
+      
+      vec2 lightPos = uCursorPositions[i].xz;
+      float distToLight = length(worldPos - lightPos);
+      
+      // Update min distance for grid fade
+      minDistToLight = min(minDistToLight, distToLight);
+      
+      if (distToLight < maxInfluenceRadius) {
+        // Cursors always have weight 1.0
+        float weight = 1.0;
+        vec3 targetColor = uCursorColors[i];
+        
+        // Use custom color logic for cursors
+        vec4 gradient = getGradientColor(worldPos, lightPos, maxInfluenceRadius, weight, targetColor, true);
+        
+        float alpha = gradient.a * 0.8;
         finalGradient = mix(finalGradient, gradient.rgb, alpha);
       }
     }
@@ -150,12 +189,11 @@ void main() {
   // Only calculate grid if near light sources
   if (distFade > 0.01) {
     vec2 gridUv = worldPos / uGridSize * 2.0;
-    // Increase intensity to make color visible
-    grid = gridLine(gridUv, 1.5) * distFade * 0.8;
+    grid = gridLine(gridUv, 1.5) * distFade * 0.2;
   }
   
   // Grid color (Yellow-Orange)
-  vec3 gridColor = vec3(1.0, 0.7, 0.3);
+  vec3 gridColor = vec3(0.3, 0.3, 0.3);
   
   // Combine gradient and grid
   vec3 finalColor = finalGradient + gridColor * grid;
@@ -171,10 +209,12 @@ interface InfiniteBackgroundProps {
   cursors?: Array<{
     grid_x: number;
     grid_z: number;
+    color?: string;
   }>;
   myCursor?: {
     gridX: number;
     gridZ: number;
+    color?: string;
   } | null;
   lightMode?: "buildings" | "cursors";
 }
@@ -204,6 +244,9 @@ export function InfiniteBackground({
       uBuildingCount: { value: 0 },
       uCursorPositions: {
         value: Array.from({ length: 50 }, () => new THREE.Vector3(0, 0, 0)),
+      },
+      uCursorColors: {
+        value: Array.from({ length: 50 }, () => new THREE.Color(0, 0, 0)),
       },
       uCursorCount: { value: 0 },
       uLightMode: { value: 0 }, // 0 = buildings, 1 = cursors
@@ -304,7 +347,11 @@ export function InfiniteBackground({
     // Combine all cursors (other users + my cursor)
     const allCursors = [...cursors];
     if (myCursor) {
-      allCursors.push({ grid_x: myCursor.gridX, grid_z: myCursor.gridZ });
+      allCursors.push({ 
+        grid_x: myCursor.gridX, 
+        grid_z: myCursor.gridZ,
+        color: myCursor.color 
+      });
     }
 
     console.log(
@@ -317,9 +364,21 @@ export function InfiniteBackground({
       .slice(0, 50)
       .map((cursor) => new THREE.Vector3(cursor.grid_x, 0, cursor.grid_z));
 
+    const targetColors = allCursors
+      .slice(0, 50)
+      .map((cursor) => new THREE.Color(cursor.color || "#FFFFFF"));
+
     // GSAP smooth interpolation for each cursor position
     const currentPositions =
       materialRef.current.uniforms.uCursorPositions.value;
+    const currentColors = materialRef.current.uniforms.uCursorColors.value;
+
+    // Update colors
+    targetColors.forEach((col, i) => {
+      if (currentColors[i]) {
+        currentColors[i].copy(col);
+      }
+    });
 
     // Update existing cursors with GSAP animation
     targetPositions.forEach((targetPos, index) => {
