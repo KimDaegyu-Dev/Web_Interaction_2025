@@ -53,8 +53,8 @@ export function useGridInteraction() {
     (x: number, z: number): Building | undefined => {
       const cellSize = GRID_CONFIG.CELL_SIZE;
       return buildings.find((b) => {
-        const bx = Math.floor(b.position[0] / cellSize) * cellSize;
-        const bz = Math.floor(b.position[2] / cellSize) * cellSize;
+        const bx = Math.round(b.position[0] / cellSize) * cellSize;
+        const bz = Math.round(b.position[2] / cellSize) * cellSize;
         return bx === x && bz === z;
       });
     },

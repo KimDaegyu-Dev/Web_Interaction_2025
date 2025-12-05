@@ -3,7 +3,8 @@ import { useMemo, useRef, useEffect } from "react";
 import * as THREE from "three";
 import gsap from "gsap";
 import { GRID_CONFIG } from "../../config/grid";
-import type { CursorPosition, PlacedObject } from "../../config/types";
+import { calculateObliqueMatrix } from "../../utils/projection";
+import type { CursorPosition, PlacedObject, ProjectionParams } from "../../config/types";
 import type { RoadSegment } from "../../utils/clusteringAlgorithm";
 
 const vertexShader = `
@@ -19,6 +20,7 @@ const fragmentShader = `
 precision highp float;
 
 uniform mat4 uInverseViewProj;
+uniform mat4 uInverseOblique;
 uniform float uGridSize;
 uniform float uTime;
 
@@ -79,7 +81,7 @@ float distToSegment(vec2 p, vec2 a, vec2 b) {
   return length(pa - ba * h);
 }
 
-// 도로 선분 렌더링 함수
+// 도로 선분 렌더링 함수 (라운딩 없음)
 float roadSegmentLine(vec2 worldPos, vec4 segment, float roadWidth) {
   vec2 a = vec2(segment.x, segment.y);
   vec2 b = vec2(segment.z, segment.w);
@@ -90,7 +92,8 @@ float roadSegmentLine(vec2 worldPos, vec4 segment, float roadWidth) {
   float dist = distToSegment(worldPos, a, b);
   float halfWidth = roadWidth * 0.5;
   
-  return 1.0 - smoothstep(0.0, halfWidth, dist);
+  // step 함수로 라운딩 없이 sharp edge
+  return 1.0 - step(halfWidth, dist);
 }
 
 void main() {
@@ -110,12 +113,19 @@ void main() {
   vec3 rayOrigin = worldNear.xyz;
   vec3 rayDir = normalize(worldFar.xyz - worldNear.xyz);
 
-  // 3. Y=0 평면과 교차
-  float t = -rayOrigin.y / rayDir.y;
+  // 3. Oblique 역행렬을 적용하여 실제 월드 좌표로 변환
+  vec4 realOrigin4 = uInverseOblique * vec4(rayOrigin, 1.0);
+  vec3 realOrigin = realOrigin4.xyz / realOrigin4.w;
+
+  vec4 realDir4 = uInverseOblique * vec4(rayDir, 0.0);
+  vec3 realDir = normalize(realDir4.xyz);
+
+  // 4. Y=0 평면과 교차
+  float t = -realOrigin.y / realDir.y;
   
   if (t < 0.0) discard;
   
-  vec3 intersectPoint = rayOrigin + rayDir * t;
+  vec3 intersectPoint = realOrigin + realDir * t;
   vec2 worldPos = intersectPoint.xz;
   
   // 4. 기본 배경색 (따뜻한 파스텔 라벤더)
@@ -159,27 +169,27 @@ void main() {
   
   finalGradient = clamp(finalGradient, vec3(0.0), vec3(1.0));
   
-  // 7. 그리드 라인 (광원 근처에서만)
+  // 7. 그리드 라인 (광원 근처에서만, 더 연하게)
   float grid = 0.0;
   float distFade = 1.0 - smoothstep(5.0, 30.0, minDistToLight);
   
   if (distFade > 0.01) {
     vec2 gridUv = worldPos / uGridSize * 2.0;
-    grid = gridLine(gridUv, 1.5) * distFade * 0.8;
+    grid = gridLine(gridUv, 1.5) * distFade * 0.3;
   }
   
   vec3 gridColor = vec3(1.0, 0.7, 0.3);
   vec3 finalColor = finalGradient + gridColor * grid;
   
-  // 8. 도로 선분 렌더링
+  // 8. 도로 선분 렌더링 (투명도 없음)
   float roadIntensity = 0.0;
   for (int i = 0; i < 150; i++) {
     if (i >= uRoadSegmentCount) break;
     roadIntensity = max(roadIntensity, roadSegmentLine(worldPos, uRoadSegments[i], uRoadWidth));
   }
   
-  // 도로 색상 블렌딩
-  finalColor = mix(finalColor, uRoadColor, roadIntensity * 0.7);
+  // 도로 색상 블렌딩 (투명도 없이 완전 대체)
+  finalColor = mix(finalColor, uRoadColor, roadIntensity);
   
   gl_FragColor = vec4(finalColor, 1.0);
 }
@@ -190,6 +200,8 @@ interface InfiniteBackgroundProps {
   cursors?: CursorPosition[];
   myCursor?: { gridX: number; gridZ: number } | null;
   roadSegments?: RoadSegment[];
+  projectionParams: ProjectionParams;
+  getPanOffset: () => THREE.Vector3;
 }
 
 /**
@@ -201,6 +213,8 @@ export function InfiniteBackground({
   cursors = [],
   myCursor = null,
   roadSegments = [],
+  projectionParams,
+  getPanOffset,
 }: InfiniteBackgroundProps) {
   const { camera, gl, clock } = useThree();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
@@ -208,6 +222,7 @@ export function InfiniteBackground({
   const uniforms = useMemo(
     () => ({
       uInverseViewProj: { value: new THREE.Matrix4() },
+      uInverseOblique: { value: new THREE.Matrix4() },
       uGridSize: { value: GRID_CONFIG.CELL_SIZE  },
       uTime: { value: 0 },
       uBuildingPositions: {
@@ -230,6 +245,7 @@ export function InfiniteBackground({
   );
 
   const tempMatrix = useMemo(() => new THREE.Matrix4(), []);
+  const tempObliqueMatrix = useMemo(() => new THREE.Matrix4(), []);
 
   // 건물 클러스터링 (공간 해싱)
   useEffect(() => {
@@ -343,6 +359,12 @@ export function InfiniteBackground({
     materialRef.current.uniforms.uInverseViewProj.value
       .copy(tempMatrix)
       .invert();
+
+    // Oblique 역행렬 계산 (panOffset 반영)
+    const panOffset = getPanOffset();
+    const obliqueMatrix = calculateObliqueMatrix(projectionParams, panOffset);
+    tempObliqueMatrix.copy(obliqueMatrix).invert();
+    materialRef.current.uniforms.uInverseOblique.value.copy(tempObliqueMatrix);
   }); 
 
   return (

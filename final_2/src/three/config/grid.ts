@@ -36,7 +36,7 @@ export const GRID_CONFIG = {
   /** 도로 설정 */
   ROAD: {
     /** 도로 폭 (월드 유닛) */
-    WIDTH: 0.8,
+    WIDTH: 1.6,
     /** 도로 색상 */
     COLOR: "#888888",
   },

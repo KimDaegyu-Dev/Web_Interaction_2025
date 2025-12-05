@@ -1,10 +1,12 @@
-import { useRef, useMemo, useCallback } from "react";
+import { useRef, useMemo, useCallback, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import gsap from "gsap";
 import type { OtherCursor } from "@/stores/cameraStore";
 
 interface RealtimeCursorsProps {
   cursors: OtherCursor[];
+  myCursor?: { gridX: number; gridZ: number; color?: string } | null;
 }
 
 const CURSOR_COLORS = [
@@ -18,14 +20,15 @@ const CURSOR_COLORS = [
   "#85C1E9", // Blue
 ];
 
-/**
- * 실시간 다른 사용자들의 커서를 표시
- * 부드러운 보간으로 커서 움직임 표현
- */
-export function RealtimeCursors({ cursors }: RealtimeCursorsProps) {
-  // 각 커서별 현재 위치 (보간용)
-  const currentPositions = useRef<Map<string, THREE.Vector3>>(new Map());
+// 공유 지오메트리 (WebGL 컨텍스트 손실 방지)
+const sharedSphereGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+const sharedRingGeometry = new THREE.RingGeometry(0.3, 0.5, 32);
 
+/**
+ * 실시간 커서 표시 컴포넌트
+ * 내 커서 + 다른 사용자들의 커서를 표시
+ */
+export function RealtimeCursors({ cursors, myCursor }: RealtimeCursorsProps) {
   // 커서별 색상 할당
   const getCursorColor = useCallback((userId: string): string => {
     let hash = 0;
@@ -36,37 +39,27 @@ export function RealtimeCursors({ cursors }: RealtimeCursorsProps) {
     return CURSOR_COLORS[Math.abs(hash) % CURSOR_COLORS.length];
   }, []);
 
-  // 애니메이션 프레임 (부드러운 보간)
-  useFrame(() => {
-    cursors.forEach((cursor) => {
-      const current = currentPositions.current.get(cursor.userId);
-      const target = new THREE.Vector3(cursor.gridX, 0.5, cursor.gridZ);
-
-      if (current) {
-        // 부드러운 보간 (lerp factor 0.1)
-        current.lerp(target, 0.1);
-      } else {
-        currentPositions.current.set(cursor.userId, target.clone());
-      }
-    });
-
-    // 오래된 커서 정리
-    const cursorIds = new Set(cursors.map((c) => c.userId));
-    for (const key of currentPositions.current.keys()) {
-      if (!cursorIds.has(key)) {
-        currentPositions.current.delete(key);
-      }
-    }
-  });
-
   return (
     <group name="realtime-cursors">
+      {/* 내 커서 - 특별한 스타일 */}
+      {myCursor && (
+        <CursorIndicator
+          key="my-cursor"
+          gridX={myCursor.gridX}
+          gridZ={myCursor.gridZ}
+          color={myCursor.color || "#FFFFFF"}
+          isMe={true}
+        />
+      )}
+      
+      {/* 다른 사용자들의 커서 */}
       {cursors.map((cursor) => (
         <CursorIndicator
           key={cursor.userId}
-          cursor={cursor}
+          gridX={cursor.gridX}
+          gridZ={cursor.gridZ}
           color={getCursorColor(cursor.userId)}
-          currentPositions={currentPositions}
+          isMe={false}
         />
       ))}
     </group>
@@ -74,66 +67,110 @@ export function RealtimeCursors({ cursors }: RealtimeCursorsProps) {
 }
 
 interface CursorIndicatorProps {
-  cursor: OtherCursor;
+  gridX: number;
+  gridZ: number;
   color: string;
-  currentPositions: React.MutableRefObject<Map<string, THREE.Vector3>>;
+  isMe: boolean;
 }
 
 function CursorIndicator({
-  cursor,
+  gridX,
+  gridZ,
   color,
-  currentPositions,
+  isMe,
 }: CursorIndicatorProps) {
   const groupRef = useRef<THREE.Group>(null);
+  const meshRef = useRef<THREE.Mesh>(null);
   const ringRef = useRef<THREE.Mesh>(null);
 
-  // 링 애니메이션
-  useFrame((state) => {
+  // 공유 머티리얼 (메모리 절약)
+  const materials = useMemo(() => ({
+    sphere: new THREE.MeshStandardMaterial({
+      color,
+      emissive: color,
+      emissiveIntensity: isMe ? 2.0 : 1.5,
+      transparent: true,
+      opacity: isMe ? 0.9 : 0.8,
+    }),
+    ring: new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: isMe ? 0.5 : 0.3,
+      side: THREE.DoubleSide,
+    }),
+  }), [color, isMe]);
+
+  // 머티리얼 정리
+  useEffect(() => {
+    return () => {
+      materials.sphere.dispose();
+      materials.ring.dispose();
+    };
+  }, [materials]);
+
+  // GSAP 부드러운 위치 보간
+  useEffect(() => {
     if (groupRef.current) {
-      const pos = currentPositions.current.get(cursor.userId);
-      if (pos) {
-        groupRef.current.position.copy(pos);
-      }
+      gsap.to(groupRef.current.position, {
+        x: gridX,
+        z: gridZ,
+        duration: 0.3,
+        ease: "power2.out",
+        overwrite: true,
+      });
+    }
+  }, [gridX, gridZ]);
+
+  // 애니메이션 프레임
+  useFrame(({ clock }) => {
+    if (meshRef.current) {
+      // 부드러운 부유 애니메이션
+      const float = Math.sin(clock.getElapsedTime() * 2) * 0.1;
+      meshRef.current.position.y = 0.5 + float;
+      
+      // 회전 애니메이션
+      meshRef.current.rotation.y += isMe ? 0.03 : 0.02;
     }
 
-    // 맥박 애니메이션
     if (ringRef.current) {
-      const scale = 1 + Math.sin(state.clock.elapsedTime * 3) * 0.2;
+      // 맥박 애니메이션
+      const scale = 1 + Math.sin(clock.getElapsedTime() * (isMe ? 4 : 3)) * 0.2;
       ringRef.current.scale.set(scale, scale, 1);
+      
+      if (isMe) {
+        ringRef.current.rotation.z += 0.01;
+      }
     }
   });
 
-  // 색상을 THREE.Color로 변환
-  const threeColor = useMemo(() => new THREE.Color(color), [color]);
-
   return (
     <group ref={groupRef}>
-      {/* 중앙 점 */}
-      <mesh>
-        <sphereGeometry args={[0.15, 16, 16]} />
-        <meshStandardMaterial
-          color={threeColor}
-          emissive={threeColor}
-          emissiveIntensity={0.5}
-        />
-      </mesh>
-
-      {/* 맥박 링 */}
-      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <ringGeometry args={[0.3, 0.4, 32]} />
-        <meshBasicMaterial color={threeColor} transparent opacity={0.5} />
-      </mesh>
-
-      {/* 사용자 이름 (선택 사항) */}
-      {/* <Text
-        position={[0, 1, 0]}
-        fontSize={0.3}
+      {/* 포인트 라이트 (조명) */}
+      <pointLight
         color={color}
-        anchorX="center"
-        anchorY="bottom"
-      >
-        {cursor.userId.slice(0, 8)}
-      </Text> */}
+        intensity={isMe ? 2.5 : 2}
+        distance={isMe ? 6 : 5}
+        decay={2}
+        position={[0, 0.5, 0]}
+      />
+
+      {/* 빛나는 구체 */}
+      <mesh 
+        ref={meshRef} 
+        position={[0, 0.5, 0]} 
+        geometry={sharedSphereGeometry} 
+        material={materials.sphere} 
+      />
+
+      {/* 바닥 링 */}
+      <mesh 
+        ref={ringRef}
+        scale={[isMe ? 4 : 3, isMe ? 4 : 3, 1]}
+        position={[0, 0.05, 0]} 
+        rotation={[-Math.PI / 2, 0, 0]}
+        geometry={sharedRingGeometry}
+        material={materials.ring}
+      />
     </group>
   );
 }

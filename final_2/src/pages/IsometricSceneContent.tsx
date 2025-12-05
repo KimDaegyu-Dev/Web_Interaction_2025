@@ -1,12 +1,17 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import { useFrame, ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
 import { IsometricCamera } from "@/three/cameras/IsometricCamera";
 import { Lights } from "@/three/lights/Lights";
 import { InfiniteBackground } from "@/three/components/Grid/InfiniteBackground";
 import { InteractiveBuildings } from "@/three/components/DisplayObjects";
-import { useIsometricControls } from "@/three/hooks/useIsometricControls";
+import { RealtimeCursors } from "@/three/components/RealtimeCursors";
+import { useMouseControls } from "@/three/hooks/useMouseControls";
+import { useObliqueProjection } from "@/three/hooks/useObliqueProjection";
+import { useGridRaycasting } from "@/three/hooks/useGridRaycasting";
 import { GRID_CONFIG } from "@/three/config/grid";
+import { DEFAULT_PROJECTION_PARAMS } from "@/three/config/presets";
+import { useMousePositionStore } from "@/stores/mousePositionStore";
 import type { RoadSegment } from "@/three/utils/clusteringAlgorithm";
 import type { OtherCursor } from "@/stores/cameraStore";
 import type { PlacedObject } from "@/three/config/types";
@@ -34,7 +39,7 @@ interface IsometricSceneContentProps {
 
 /**
  * Canvas 내부 씬 컨텐츠
- * useIsometricControls를 사용하여 패닝/줌 구현
+ * useMouseControls (RxJS 기반)를 사용하여 패닝/줌 구현
  */
 export function IsometricSceneContent({
   placedObjects,
@@ -51,51 +56,50 @@ export function IsometricSceneContent({
   updateCursor,
   onEdgeZoneChange,
 }: IsometricSceneContentProps) {
-  const { getPanOffset, getEdgeZone } = useIsometricControls();
+  const { getPanOffset, getEdgeZone } = useMouseControls();
   const sceneGroupRef = useRef<THREE.Group>(null);
   const lastClickTimeRef = useRef<Map<string, number>>(new Map());
+  
+  // 전역 마우스 위치 상태
+  const mousePosition = useMousePositionStore((state) => state.mousePosition);
+  
+  // 투영 파라미터 (기본 Isometric)
+  const projectionParams = DEFAULT_PROJECTION_PARAMS;
 
-  // 매 프레임마다 패닝 오프셋 적용
+  // Oblique 투영 적용
+  useObliqueProjection(sceneGroupRef, projectionParams, getPanOffset);
+
+  // 매 프레임 레이캐스팅으로 그리드 호버 처리
+  useGridRaycasting({
+    mousePosition,
+    projectionParams,
+    getPanOffset,
+    onCellPointerOver: (x, z) => {
+      onCellPointerOver(x, z);
+      updateCursor(x + GRID_CONFIG.CELL_SIZE / 2, z + GRID_CONFIG.CELL_SIZE / 2);
+    },
+    onCellPointerOut,
+  });
+
+  // 매 프레임마다 가장자리 영역 상태 업데이트
   useFrame(() => {
-    if (sceneGroupRef.current) {
-      const offset = getPanOffset();
-      sceneGroupRef.current.position.x = offset.x;
-      sceneGroupRef.current.position.y = offset.y;
-    }
-
-    // 가장자리 영역 상태 업데이트
     const edgeZone = getEdgeZone();
     onEdgeZoneChange(edgeZone);
   });
 
-  // 바닥 클릭 핸들러 (좌클릭만)
+  // 바닥 클릭 핸들러 (좌클릭만) - 레이케스팅 기반
   const handleGroundClick = useCallback(
     (e: ThreeEvent<MouseEvent>) => {
       // 좌클릭만 처리
       if (e.nativeEvent.button !== 0) return;
 
-      const point = e.point;
-      const cellX = Math.floor(point.x / GRID_CONFIG.CELL_SIZE) * GRID_CONFIG.CELL_SIZE;
-      const cellZ = Math.floor(point.z / GRID_CONFIG.CELL_SIZE) * GRID_CONFIG.CELL_SIZE;
-      onCellClick(e, cellX, 0, cellZ);
-      updateCursor(cellX + GRID_CONFIG.CELL_SIZE / 2, cellZ + GRID_CONFIG.CELL_SIZE / 2);
+      // 이미 useGridRaycasting에서 계산된 hoveredPosition 사용
+      if (hoveredPosition) {
+        const [cellX, , cellZ] = hoveredPosition;
+        onCellClick(e, cellX, 0, cellZ);
+      }
     },
-    [onCellClick, updateCursor]
-  );
-
-  // 바닥 포인터 이동 핸들러
-  const handleGroundPointerMove = useCallback(
-    (e: ThreeEvent<PointerEvent>) => {
-      const point = e.point;
-      const cellX = Math.floor(point.x / GRID_CONFIG.CELL_SIZE);
-      const cellZ = Math.floor(point.z / GRID_CONFIG.CELL_SIZE);
-      onCellPointerOver(cellX * GRID_CONFIG.CELL_SIZE, cellZ * GRID_CONFIG.CELL_SIZE);
-      updateCursor(
-        cellX * GRID_CONFIG.CELL_SIZE + GRID_CONFIG.CELL_SIZE / 2,
-        cellZ * GRID_CONFIG.CELL_SIZE + GRID_CONFIG.CELL_SIZE / 2
-      );
-    },
-    [onCellPointerOver, updateCursor]
+    [hoveredPosition, onCellClick]
   );
 
   // 건물 클릭 핸들러 (더블클릭 감지 포함)
@@ -128,16 +132,8 @@ export function IsometricSceneContent({
       {/* 조명 */}
       <Lights />
 
-      {/* 패닝 적용되는 씬 그룹 */}
+      {/* 패닝 적용되는 씬 그룹 (Oblique 투영) */}
       <group ref={sceneGroupRef}>
-        {/* 무한 배경 + 도로 */}
-        <InfiniteBackground
-          buildings={placedObjects}
-          cursors={cursors}
-          myCursor={myCursor}
-          roadSegments={roadSegments}
-        />
-
         {/* 건물들 */}
         <InteractiveBuildings
           buildings={placedObjects}
@@ -145,18 +141,32 @@ export function IsometricSceneContent({
           onBuildingClick={handleBuildingClick}
         />
 
-        {/* 바닥 (클릭/호버 감지용) */}
+        {/* 실시간 커서 (내 커서 + 다른 사용자 커서) */}
+        <RealtimeCursors
+          cursors={cursors}
+          myCursor={myCursor}
+        />
+
+        {/* 바닥 (클릭 감지용) - 호버는 useGridRaycasting에서 처리 */}
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}
           position={[0, -0.01, 0]}
           onClick={handleGroundClick}
-          onPointerMove={handleGroundPointerMove}
-          onPointerOut={onCellPointerOut}
         >
           <planeGeometry args={[500, 500]} />
           <meshBasicMaterial transparent opacity={0} />
         </mesh>
       </group>
+
+      {/* 무한 배경 (Oblique 역행렬 적용) - 씬 그룹 외부에서 렌더링 */}
+      <InfiniteBackground
+        buildings={placedObjects}
+        cursors={cursors}
+        myCursor={myCursor}
+        roadSegments={roadSegments}
+        projectionParams={projectionParams}
+        getPanOffset={getPanOffset}
+      />
     </>
   );
 }

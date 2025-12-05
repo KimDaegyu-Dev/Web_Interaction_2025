@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Canvas } from "@react-three/fiber";
 import { EdgeZoneIndicator } from "@/three/components/EdgeZoneIndicator";
@@ -7,6 +7,7 @@ import { useRealtimeCursors } from "@/three/hooks/useRealtimeCursors";
 import { useRoadClustering } from "@/three/hooks/useRoadClustering";
 import { BuildingModal } from "@/components/BuildingModal";
 import { GRID_CONFIG } from "@/three/config/grid";
+import { useMousePositionStore } from "@/stores/mousePositionStore";
 import { IsometricSceneContent } from "./IsometricSceneContent";
 
 /**
@@ -20,6 +21,29 @@ import { IsometricSceneContent } from "./IsometricSceneContent";
  */
 export function IsometricCityPage() {
   const navigate = useNavigate();
+  
+  // 전역 마우스 위치 상태
+  const updateFromEvent = useMousePositionStore((state) => state.updateFromEvent);
+  const clearMousePosition = useMousePositionStore((state) => state.clearMousePosition);
+  
+  // 마우스 이벤트 리스너 등록 (가장자리 스크롤 중에도 호버 감지)
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      updateFromEvent(e);
+    };
+    
+    const handleMouseLeave = () => {
+      clearMousePosition();
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseleave", handleMouseLeave);
+    
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseleave", handleMouseLeave);
+    };
+  }, [updateFromEvent, clearMousePosition]);
   
   // 가장자리 영역 상태 (UI 인디케이터용)
   const [edgeZone, setEdgeZone] = useState({
@@ -58,13 +82,9 @@ export function IsometricCityPage() {
     navigate(`/details/${buildingId}`);
   }, [navigate]);
 
-  // 호버 셀 위치 계산
+  // 호버 셀 위치 계산 (worldToGridCoords는 스냅된 월드 좌표를 반환)
   const hoveredPosition: [number, number, number] | null = hoveredCell
-    ? [
-        hoveredCell.x * GRID_CONFIG.CELL_SIZE + GRID_CONFIG.CELL_SIZE / 2,
-        0,
-        hoveredCell.z * GRID_CONFIG.CELL_SIZE + GRID_CONFIG.CELL_SIZE / 2,
-      ]
+    ? [hoveredCell.x, 0, hoveredCell.z]
     : null;
 
   return (

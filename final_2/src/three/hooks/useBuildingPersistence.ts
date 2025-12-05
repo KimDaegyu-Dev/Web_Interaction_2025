@@ -34,7 +34,7 @@ export function useBuildingPersistence() {
       try {
         setIsLoading(true);
         const { data, error } = await supabase
-          .from("cubes")
+          .from("buildings")
           .select("*")
           .order("created_at", { ascending: true });
 
@@ -73,10 +73,10 @@ export function useBuildingPersistence() {
     console.log("[BuildingPersistence] Setting up Realtime subscription...");
 
     const channel = supabase
-      .channel("cubes-changes")
+      .channel("buildings-changes")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "cubes" },
+        { event: "*", schema: "public", table: "buildings" },
         (payload) => {
           console.log("[BuildingPersistence] Realtime event:", payload.eventType);
 
@@ -148,7 +148,7 @@ export function useBuildingPersistence() {
         };
 
         const { data: result, error } = await supabase
-          .from("cubes")
+          .from("buildings")
           .insert(insertData)
           .select()
           .single();
@@ -173,7 +173,7 @@ export function useBuildingPersistence() {
       try {
         // 패스워드 확인
         const { data: existing } = await supabase
-          .from("cubes")
+          .from("buildings")
           .select("password")
           .eq("id", id)
           .single();
@@ -183,7 +183,7 @@ export function useBuildingPersistence() {
           return false;
         }
 
-        const { error } = await supabase.from("cubes").delete().eq("id", id);
+        const { error } = await supabase.from("buildings").delete().eq("id", id);
 
         if (error) {
           console.error("Error deleting building:", error);
@@ -208,7 +208,7 @@ export function useBuildingPersistence() {
     ): Promise<boolean> => {
       try {
         const { data: existing } = await supabase
-          .from("cubes")
+          .from("buildings")
           .select("password")
           .eq("id", id)
           .single();
@@ -219,7 +219,7 @@ export function useBuildingPersistence() {
         }
 
         const { error } = await supabase
-          .from("cubes")
+          .from("buildings")
           .update(updates)
           .eq("id", id);
 
