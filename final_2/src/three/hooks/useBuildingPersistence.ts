@@ -6,10 +6,23 @@ import {
   type BuildingStructureBox,
 } from "@/utils/supabase";
 import { getBuildingStructure } from "../config/buildingPresets";
+import { GRID_CONFIG } from "../config/grid";
+
+/**
+ * DB 좌표(정수형, 셀 좌하단 기준)를 렌더링 좌표(셀 중앙)로 변환
+ * 예: CELL_SIZE=5일 때, 200 -> 202.5 (셀 중앙)
+ */
+function toRenderPosition(value: number): number {
+  const halfCell = GRID_CONFIG.CELL_SIZE / 2;
+  return value + halfCell;
+}
 
 export interface Building {
   id: string;
+  /** 렌더링용 위치 (셀 중앙) */
   position: [number, number, number];
+  /** DB 저장 위치 (정수형, 셀 좌하단) */
+  dbPosition: [number, number, number];
   color: number;
   meshIndex: number;
   buildingStructure?: BuildingStructureBox[] | null;
@@ -46,7 +59,16 @@ export function useBuildingPersistence() {
         if (data) {
           const loadedBuildings: Building[] = data.map((building: BuildingData) => ({
             id: building.id,
-            position: [building.position_x, building.position_y, building.position_z],
+            position: [
+              toRenderPosition(building.position_x),
+              building.position_y,
+              toRenderPosition(building.position_z),
+            ],
+            dbPosition: [
+              building.position_x,
+              building.position_y,
+              building.position_z,
+            ],
             color: building.color,
             meshIndex: building.mesh_index,
             buildingStructure: building.building_structure || getBuildingStructure(building.mesh_index),
@@ -88,7 +110,16 @@ export function useBuildingPersistence() {
                 ...prev,
                 {
                   id: newBuilding.id,
-                  position: [newBuilding.position_x, newBuilding.position_y, newBuilding.position_z],
+                  position: [
+                    toRenderPosition(newBuilding.position_x),
+                    newBuilding.position_y,
+                    toRenderPosition(newBuilding.position_z),
+                  ],
+                  dbPosition: [
+                    newBuilding.position_x,
+                    newBuilding.position_y,
+                    newBuilding.position_z,
+                  ],
                   color: newBuilding.color,
                   meshIndex: newBuilding.mesh_index,
                   buildingStructure: newBuilding.building_structure || getBuildingStructure(newBuilding.mesh_index),

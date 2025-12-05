@@ -14,9 +14,7 @@ void main() {
   // Force full-screen quad at far plane (z=0.999 in NDC)
   gl_Position = vec4(position.xy, 0.999, 1.0);
 }
-`;
-
-const fragmentShader = `
+`;const fragmentShader = `
 precision highp float;
 
 uniform mat4 uInverseViewProj;
@@ -24,33 +22,32 @@ uniform mat4 uInverseOblique;
 uniform float uGridSize;
 uniform float uTime;
 
-// 건물 위치 (클러스터 중심)
+// 건물 위치 (Glow 효과용)
 uniform vec3 uBuildingPositions[50];
 uniform int uBuildingCount;
 
-// 커서 위치
+// 커서
 uniform vec3 uCursorPositions[50];
 uniform int uCursorCount;
 
-// 도로 선분 (x1, z1, x2, z2)
+// 도로
 uniform vec4 uRoadSegments[150];
 uniform int uRoadSegmentCount;
 
-// 설정
 uniform float uInfluenceRadius;
 uniform float uRoadWidth;
 uniform vec3 uRoadColor;
 
 varying vec2 vUv;
 
-// 그라데이션 색상 (파스텔 오렌지/노랑)
+// 그라데이션
 vec4 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist, float weight) {
   float dist = length(worldPos - centerPos) / maxDist;
   
-  vec3 color1 = vec3(1.0, 0.95, 0.8);   // 매우 연한 노랑 (중심)
-  vec3 color2 = vec3(1.0, 0.9, 0.75);   // 부드러운 크림
-  vec3 color3 = vec3(1.0, 0.85, 0.7);   // 파스텔 오렌지
-  vec3 color4 = vec3(1.0, 0.8, 0.65);   // 부드러운 살구색 (가장자리)
+  vec3 color1 = vec3(0.95, 0.96, 0.98); 
+  vec3 color2 = vec3(0.90, 0.92, 0.95); 
+  vec3 color3 = vec3(0.85, 0.88, 0.92); 
+  vec3 color4 = vec3(0.80, 0.82, 0.85); 
   
   float t1 = smoothstep(0.0, 0.3, dist);
   float t2 = smoothstep(0.3, 0.6, dist);
@@ -66,14 +63,14 @@ vec4 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist, float weight
   return vec4(color, falloff * normalizedWeight);
 }
 
-// 그리드 라인 함수 (안티앨리어싱)
+// 그리드 라인 그리기
 float gridLine(vec2 pos, float lineWidth) {
   vec2 grid = abs(fract(pos - 0.5) - 0.5) / fwidth(pos);
   float line = min(grid.x, grid.y);
   return 1.0 - min(line / lineWidth, 1.0);
 }
 
-// 점과 선분 사이의 최단 거리 계산
+// 도로 거리 계산
 float distToSegment(vec2 p, vec2 a, vec2 b) {
   vec2 pa = p - a;
   vec2 ba = b - a;
@@ -81,115 +78,96 @@ float distToSegment(vec2 p, vec2 a, vec2 b) {
   return length(pa - ba * h);
 }
 
-// 도로 선분 렌더링 함수 (라운딩 없음)
+// 도로 라인 그리기
 float roadSegmentLine(vec2 worldPos, vec4 segment, float roadWidth) {
   vec2 a = vec2(segment.x, segment.y);
   vec2 b = vec2(segment.z, segment.w);
-  
-  // 유효하지 않은 선분 체크
   if (length(b - a) < 0.001) return 0.0;
   
   float dist = distToSegment(worldPos, a, b);
-  float halfWidth = roadWidth * 0.5;
+  float halfWidth = roadWidth * 0.35; // 도로 두께 약간 조정
+  float aa = fwidth(dist);
   
-  // step 함수로 라운딩 없이 sharp edge
-  return 1.0 - step(halfWidth, dist);
+  return 1.0 - smoothstep(halfWidth - aa, halfWidth + aa, dist);
 }
 
 void main() {
-  // 1. NDC 좌표
+  // --- 좌표 계산 ---
   vec2 ndc = vUv * 2.0 - 1.0;
-
-  // 2. 월드 공간으로 역투영
   vec4 ndcNear = vec4(ndc, -1.0, 1.0);
   vec4 ndcFar = vec4(ndc, 1.0, 1.0);
-
   vec4 worldNear = uInverseViewProj * ndcNear;
   vec4 worldFar = uInverseViewProj * ndcFar;
-
   worldNear /= worldNear.w;
   worldFar /= worldFar.w;
-
   vec3 rayOrigin = worldNear.xyz;
   vec3 rayDir = normalize(worldFar.xyz - worldNear.xyz);
-
-  // 3. Oblique 역행렬을 적용하여 실제 월드 좌표로 변환
   vec4 realOrigin4 = uInverseOblique * vec4(rayOrigin, 1.0);
   vec3 realOrigin = realOrigin4.xyz / realOrigin4.w;
-
   vec4 realDir4 = uInverseOblique * vec4(rayDir, 0.0);
   vec3 realDir = normalize(realDir4.xyz);
-
-  // 4. Y=0 평면과 교차
   float t = -realOrigin.y / realDir.y;
-  
   if (t < 0.0) discard;
-  
   vec3 intersectPoint = realOrigin + realDir * t;
   vec2 worldPos = intersectPoint.xz;
-  
-  // 4. 기본 배경색 (따뜻한 파스텔 라벤더)
-  vec3 baseColor = vec3(0.9, 0.88, 0.95);
+
+  // --- 1. 배경 그라데이션 ---
+  vec3 baseColor = vec3(0.96, 0.96, 0.96); 
   vec3 finalGradient = baseColor;
-  
   float minDistToLight = 1000.0;
   
-  // 5. 커서 기반 그라데이션
+  // 커서
   for (int i = 0; i < 50; i++) {
     if (i >= uCursorCount) break;
-    
     vec2 cursorPos = uCursorPositions[i].xz;
     float distToCursor = length(worldPos - cursorPos);
-    
     minDistToLight = min(minDistToLight, distToCursor);
-    
     if (distToCursor < uInfluenceRadius) {
       vec4 gradient = getGradientColor(worldPos, cursorPos, uInfluenceRadius, 1.0);
-      float alpha = gradient.a * 0.6;
-      finalGradient = mix(finalGradient, gradient.rgb, alpha);
+      finalGradient = mix(finalGradient, gradient.rgb, gradient.a * 0.6);
     }
   }
   
-  // 6. 건물 클러스터 기반 그라데이션
+  // 건물 주변 Glow (마스킹 대신 분위기만 유지)
   for (int i = 0; i < 50; i++) {
     if (i >= uBuildingCount) break;
-    
     vec2 buildingPos = uBuildingPositions[i].xz;
     float distToBuilding = length(worldPos - buildingPos);
-    
     minDistToLight = min(minDistToLight, distToBuilding);
-    
     if (distToBuilding < uInfluenceRadius) {
       float weight = uBuildingPositions[i].y;
       vec4 gradient = getGradientColor(worldPos, buildingPos, uInfluenceRadius, weight);
-      float alpha = gradient.a * 0.4;
-      finalGradient = mix(finalGradient, gradient.rgb, alpha);
+      finalGradient = mix(finalGradient, gradient.rgb, gradient.a * 0.4);
     }
   }
   
   finalGradient = clamp(finalGradient, vec3(0.0), vec3(1.0));
   
-  // 7. 그리드 라인 (광원 근처에서만, 더 연하게)
+  // --- 2. 그리드 렌더링 (핵심 변경: 1x1 스케일) ---
   float grid = 0.0;
-  float distFade = 1.0 - smoothstep(5.0, 30.0, minDistToLight);
+  float distFade = 1.0 - smoothstep(5.0, 50.0, minDistToLight);
   
   if (distFade > 0.01) {
-    vec2 gridUv = worldPos / uGridSize * 2.0;
-    grid = gridLine(gridUv, 1.5) * distFade * 0.3;
+    // [중요] * 2.0을 제거했습니다. 이제 그리드는 건물 셀 크기와 1:1로 매칭됩니다.
+    // 건물 내부를 가로지르는 십자선이 사라지고, 건물 외곽선에만 그리드가 그려집니다.
+    vec2 gridUv = worldPos / uGridSize; 
+    
+    grid = gridLine(gridUv, 1.0) * distFade * 0.3;
   }
   
-  vec3 gridColor = vec3(1.0, 0.7, 0.3);
+  vec3 gridColor = vec3(0.75, 0.75, 0.8); // 연한 회색 그리드
   vec3 finalColor = finalGradient + gridColor * grid;
   
-  // 8. 도로 선분 렌더링 (투명도 없음)
+  // --- 3. 도로 렌더링 ---
   float roadIntensity = 0.0;
   for (int i = 0; i < 150; i++) {
     if (i >= uRoadSegmentCount) break;
     roadIntensity = max(roadIntensity, roadSegmentLine(worldPos, uRoadSegments[i], uRoadWidth));
   }
   
-  // 도로 색상 블렌딩 (투명도 없이 완전 대체)
-  finalColor = mix(finalColor, uRoadColor, roadIntensity);
+  // 도로는 그리드 위에 진하게 덮어씁니다.
+  vec3 posterRoadColor = vec3(0.2, 0.2, 0.25); 
+  finalColor = mix(finalColor, posterRoadColor, roadIntensity);
   
   gl_FragColor = vec4(finalColor, 1.0);
 }

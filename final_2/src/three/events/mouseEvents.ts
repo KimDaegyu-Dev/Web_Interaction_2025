@@ -18,6 +18,10 @@ import {
   startWith,
   distinctUntilChanged,
   observeOn,
+  switchMap,
+  take,
+  race,
+  mapTo,
 } from "rxjs/operators";
 
 // ============================================================
@@ -132,6 +136,40 @@ export class MouseEventStreams {
   get leftMouseDown$(): Observable<MouseEvent> {
     return this.mouseDown$.pipe(
       filter((e) => e.button === 0),
+      takeUntil(this.destroy$),
+      share()
+    );
+  }
+
+  /** 좌클릭 스트림 (mousedown → mouseup이 빠르게 일어난 경우) */
+  get leftClick$(): Observable<MouseEvent> {
+    const CLICK_THRESHOLD = 200; // ms
+    const MOVE_THRESHOLD = 5; // px
+    
+    return this.leftMouseDown$.pipe(
+      switchMap((downEvent) => {
+        const startX = downEvent.clientX;
+        const startY = downEvent.clientY;
+        const startTime = Date.now();
+        
+        // mouseup 또는 mouseleave 중 먼저 발생하는 것
+        return merge(
+          this.up$.pipe(
+            filter((upEvent) => {
+              const elapsed = Date.now() - startTime;
+              const dx = Math.abs(upEvent.clientX - startX);
+              const dy = Math.abs(upEvent.clientY - startY);
+              // 시간과 이동 거리가 임계값 이내여야 클릭으로 인정
+              return elapsed < CLICK_THRESHOLD && dx < MOVE_THRESHOLD && dy < MOVE_THRESHOLD;
+            }),
+            take(1)
+          ),
+          this.leave$.pipe(
+            take(1),
+            filter(() => false) // leave는 클릭 취소
+          )
+        ).pipe(take(1));
+      }),
       takeUntil(this.destroy$),
       share()
     );

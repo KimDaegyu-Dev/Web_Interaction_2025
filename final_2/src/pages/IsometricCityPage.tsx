@@ -64,7 +64,6 @@ export function IsometricCityPage() {
     onCellPointerOver,
     onCellPointerOut,
     onCellClick,
-    onBuildingClick,
     setModalMode,
     confirmCreate,
     confirmDelete,
@@ -82,11 +81,6 @@ export function IsometricCityPage() {
     navigate(`/details/${buildingId}`);
   }, [navigate]);
 
-  // 호버 셀 위치 계산 (worldToGridCoords는 스냅된 월드 좌표를 반환)
-  const hoveredPosition: [number, number, number] | null = hoveredCell
-    ? [hoveredCell.x, 0, hoveredCell.z]
-    : null;
-
   return (
     <div className="w-screen h-screen">
       <Canvas shadows gl={{ antialias: true }}>
@@ -95,13 +89,10 @@ export function IsometricCityPage() {
           cursors={cursors}
           myCursor={myCursor}
           roadSegments={roadSegments}
-          hoveredPosition={hoveredPosition}
-          selectedBuildingId={selectedBuildingId}
           onCellPointerOver={onCellPointerOver}
           onCellPointerOut={onCellPointerOut}
           onCellClick={onCellClick}
-          onBuildingClick={onBuildingClick}
-          onBuildingDoubleClick={handleBuildingDoubleClick}
+          onBuildingNavigate={handleBuildingDoubleClick}
           updateCursor={updateCursor}
           onEdgeZoneChange={setEdgeZone}
         />
@@ -120,32 +111,6 @@ export function IsometricCityPage() {
           우클릭 드래그: 이동 | 휠: 줌
         </div>
       </div>
-
-      {/* 선택된 건물 정보 */}
-      {selectedBuilding && (
-        <div className="fixed bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg max-w-sm">
-          <h2 className="font-bold text-gray-800">
-            {selectedBuilding.title || "이름 없음"}
-          </h2>
-          {selectedBuilding.author && (
-            <p className="text-sm text-gray-600">by {selectedBuilding.author}</p>
-          )}
-          <div className="flex gap-2 mt-3">
-            <button
-              onClick={() => handleBuildingDoubleClick(selectedBuilding.id)}
-              className="flex-1 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-            >
-              상세보기
-            </button>
-            <button
-              onClick={() => setModalMode("delete")}
-              className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600"
-            >
-              삭제
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* 건물 모달 */}
       {modalMode && (

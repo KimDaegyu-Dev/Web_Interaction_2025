@@ -10,7 +10,7 @@ import {
   takeUntil,
 } from "rxjs/operators";
 import * as THREE from "three";
-import { MouseEventStreams, type EdgeZone } from "./mouseEvents";
+import { MouseEventStreams, type EdgeZone, type MousePosition } from "./mouseEvents";
 
 // ============================================================
 // 상태 타입 정의

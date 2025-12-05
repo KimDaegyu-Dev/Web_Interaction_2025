@@ -47,8 +47,8 @@ export const BUILDING_PRESETS: BuildingPreset[] = [
     name: "코너 빌딩",
     description: "ㄱ자 형태의 코너 건물",
     structure: [
-      { position: [0, 1.5, 0], scale: [3, 3, 1] },
-      { position: [1, 1.5, 1], scale: [1, 3, 3] },
+      { position: [1, 1.5, 0], scale: [3, 3, 1] },
+      { position: [0, 1.5, 0], scale: [1, 3, 3] },
     ],
   },
   

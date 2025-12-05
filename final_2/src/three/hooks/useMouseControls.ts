@@ -3,18 +3,26 @@ import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { MouseEventStreams, CameraActions, type EdgeZone } from "../events";
 import { useCameraStore } from "@/stores/cameraStore";
+import { Subscription } from "rxjs";
+
+interface UseMouseControlsOptions {
+  /** 좌클릭 시 호출되는 콜백 */
+  onLeftClick?: () => void;
+}
 
 /**
  * RxJS 기반 마우스 컨트롤 훅
  * 
  * 인터랙션:
+ * - 좌클릭: onLeftClick 콜백 호출
  * - 우클릭 드래그: 맵 패닝 (이동)
  * - 마우스 휠: 줌 인/아웃
  * - 가장자리 호버: 자동 스크롤 (조이스틱 방식)
  * 
  * Note: 카메라는 고정, Oblique 행렬을 통해 씬 변환
  */
-export function useMouseControls() {
+export function useMouseControls(options: UseMouseControlsOptions = {}) {
+  const { onLeftClick } = options;
   const { camera, gl } = useThree();
   
   // Refs for reactive instances
@@ -32,6 +40,12 @@ export function useMouseControls() {
   // Zustand store
   const cameraState = useCameraStore((state) => state.cameraState);
   const setCameraState = useCameraStore((state) => state.setCameraState);
+  
+  // 클릭 콜백 ref (최신 값 유지)
+  const onLeftClickRef = useRef(onLeftClick);
+  useEffect(() => {
+    onLeftClickRef.current = onLeftClick;
+  }, [onLeftClick]);
 
   useEffect(() => {
     const domElement = gl.domElement;
@@ -64,9 +78,16 @@ export function useMouseControls() {
     const edgeZoneSub = cameraActions.edgeZoneObservable$.subscribe((zone) => {
       setEdgeZone(zone);
     });
+    
+    // 좌클릭 스트림 구독
+    const leftClickSub = mouseEvents.leftClick$.subscribe(() => {
+      console.log("[useMouseControls] Left click detected");
+      onLeftClickRef.current?.();
+    });
 
     return () => {
       edgeZoneSub.unsubscribe();
+      leftClickSub.unsubscribe();
       cameraActions.dispose();
       mouseEvents.dispose();
       mouseEventsRef.current = null;

@@ -1,8 +1,6 @@
 import { useCallback, useState, useEffect, useMemo } from "react";
-import { ThreeEvent } from "@react-three/fiber";
 import { useBuildingPersistence, type Building } from "./useBuildingPersistence";
 import type { PlacedObject, GridCell } from "../config/types";
-import { GRID_CONFIG } from "../config/grid";
 
 type ModalMode = "create" | "edit" | "delete" | null;
 
@@ -48,14 +46,12 @@ export function useGridInteraction() {
     [buildings]
   );
 
-  // 셀 좌표로 건물 찾기
+  // 셀 좌표로 건물 찾기 (DB 좌표 기준으로 비교)
   const findBuildingByCell = useCallback(
     (x: number, z: number): Building | undefined => {
-      const cellSize = GRID_CONFIG.CELL_SIZE;
       return buildings.find((b) => {
-        const bx = Math.round(b.position[0] / cellSize) * cellSize;
-        const bz = Math.round(b.position[2] / cellSize) * cellSize;
-        return bx === x && bz === z;
+        // dbPosition은 정수형 셀 좌표 (0, 5, 10...)
+        return b.dbPosition[0] === x && b.dbPosition[2] === z;
       });
     },
     [buildings]
@@ -70,33 +66,34 @@ export function useGridInteraction() {
     setHoveredCell(null);
   }, []);
 
-  // 그리드 클릭
+  // 그리드 클릭 (빈 셀 + 건물 통합)
+  // 실시간 커서 위치(hoveredCell) 기반으로 동작
   const onCellClick = useCallback(
-    (e: ThreeEvent<MouseEvent>, x: number, y: number, z: number) => {
-      e.stopPropagation();
+    (onBuildingNavigate?: (buildingId: string) => void) => {
+      // hoveredCell이 없으면 클릭 무시 (커서가 그리드 위에 없음)
+      if (!hoveredCell) {
+        console.log("[onCellClick] No hovered cell");
+        return;
+      }
       
+      const { x, z } = hoveredCell;
       const existing = findBuildingByCell(x, z);
 
       if (existing) {
-        // 기존 건물 선택
-        setSelectedBuildingId(existing.id);
+        // 기존 건물 클릭 -> 상세 페이지로 이동
+        console.log("[onCellClick] Building found, navigating to:", existing.id);
+        if (onBuildingNavigate) {
+          onBuildingNavigate(existing.id);
+        }
       } else {
-        // 새 건물 배치 모달 열기
+        // 빈 셀 클릭 -> 새 건물 배치 모달 열기
+        console.log("[onCellClick] Empty cell, opening create modal at:", x, z);
         setSelectedBuildingId(null);
-        setPendingAction({ mode: "create", position: [x, y, z] });
+        setPendingAction({ mode: "create", position: [x, 0, z] });
         setModalMode("create");
       }
     },
-    [findBuildingByCell]
-  );
-
-  // 건물 클릭
-  const onBuildingClick = useCallback(
-    (e: ThreeEvent<MouseEvent>, buildingId: string) => {
-      e.stopPropagation();
-      setSelectedBuildingId(buildingId);
-    },
-    []
+    [hoveredCell, findBuildingByCell]
   );
 
   // 건물 생성 확인
@@ -185,7 +182,6 @@ export function useGridInteraction() {
     onCellPointerOver,
     onCellPointerOut,
     onCellClick,
-    onBuildingClick,
     
     // 액션
     setModalMode,

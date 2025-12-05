@@ -1,5 +1,5 @@
-import { useRef, useCallback, useEffect } from "react";
-import { useFrame, ThreeEvent } from "@react-three/fiber";
+import { useRef, useCallback } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { IsometricCamera } from "@/three/cameras/IsometricCamera";
 import { Lights } from "@/three/lights/Lights";
@@ -21,13 +21,10 @@ interface IsometricSceneContentProps {
   cursors: OtherCursor[];
   myCursor: { gridX: number; gridZ: number } | null;
   roadSegments: RoadSegment[];
-  hoveredPosition: [number, number, number] | null;
-  selectedBuildingId: string | null;
   onCellPointerOver: (x: number, z: number) => void;
   onCellPointerOut: () => void;
-  onCellClick: (e: ThreeEvent<MouseEvent>, x: number, y: number, z: number) => void;
-  onBuildingClick: (e: ThreeEvent<MouseEvent>, id: string) => void;
-  onBuildingDoubleClick: (id: string) => void;
+  onCellClick: (onBuildingNavigate?: (id: string) => void) => void;
+  onBuildingNavigate: (id: string) => void;
   updateCursor: (x: number, z: number) => void;
   onEdgeZoneChange: (edgeZone: {
     left: boolean;
@@ -39,32 +36,42 @@ interface IsometricSceneContentProps {
 
 /**
  * Canvas 내부 씬 컨텐츠
- * useMouseControls (RxJS 기반)를 사용하여 패닝/줌 구현
+ * useMouseControls (RxJS 기반)를 사용하여 모든 마우스 인터랙션 처리
+ * - 좌클릭: onCellClick (건물 클릭/빈 셀 클릭 통합)
+ * - 우클릭 드래그: 맵 패닝
+ * - 휠: 줌
+ * - 가장자리 호버: 자동 스크롤
  */
 export function IsometricSceneContent({
   placedObjects,
   cursors,
   myCursor,
   roadSegments,
-  hoveredPosition,
-  selectedBuildingId,
   onCellPointerOver,
   onCellPointerOut,
   onCellClick,
-  onBuildingClick,
-  onBuildingDoubleClick,
+  onBuildingNavigate,
   updateCursor,
   onEdgeZoneChange,
 }: IsometricSceneContentProps) {
-  const { getPanOffset, getEdgeZone } = useMouseControls();
   const sceneGroupRef = useRef<THREE.Group>(null);
-  const lastClickTimeRef = useRef<Map<string, number>>(new Map());
   
   // 전역 마우스 위치 상태
   const mousePosition = useMousePositionStore((state) => state.mousePosition);
   
   // 투영 파라미터 (기본 Isometric)
   const projectionParams = DEFAULT_PROJECTION_PARAMS;
+
+  // 클릭 핸들러 - RxJS leftClick$ 스트림에서 호출됨
+  const handleLeftClick = useCallback(() => {
+    // onCellClick이 내부에서 hoveredCell을 참조하여 처리
+    onCellClick(onBuildingNavigate);
+  }, [onCellClick, onBuildingNavigate]);
+
+  // RxJS 기반 마우스 컨트롤 (좌클릭 콜백 포함)
+  const { getPanOffset, getEdgeZone } = useMouseControls({
+    onLeftClick: handleLeftClick,
+  });
 
   // Oblique 투영 적용
   useObliqueProjection(sceneGroupRef, projectionParams, getPanOffset);
@@ -87,43 +94,6 @@ export function IsometricSceneContent({
     onEdgeZoneChange(edgeZone);
   });
 
-  // 바닥 클릭 핸들러 (좌클릭만) - 레이케스팅 기반
-  const handleGroundClick = useCallback(
-    (e: ThreeEvent<MouseEvent>) => {
-      // 좌클릭만 처리
-      if (e.nativeEvent.button !== 0) return;
-
-      // 이미 useGridRaycasting에서 계산된 hoveredPosition 사용
-      if (hoveredPosition) {
-        const [cellX, , cellZ] = hoveredPosition;
-        onCellClick(e, cellX, 0, cellZ);
-      }
-    },
-    [hoveredPosition, onCellClick]
-  );
-
-  // 건물 클릭 핸들러 (더블클릭 감지 포함)
-  const handleBuildingClick = useCallback(
-    (e: ThreeEvent<MouseEvent>, id: string) => {
-      // 좌클릭만 처리
-      if (e.nativeEvent.button !== 0) return;
-
-      const now = Date.now();
-      const lastClick = lastClickTimeRef.current.get(id) || 0;
-
-      if (now - lastClick < 300) {
-        // 더블클릭
-        onBuildingDoubleClick(id);
-      } else {
-        // 싱글클릭
-        onBuildingClick(e, id);
-      }
-
-      lastClickTimeRef.current.set(id, now);
-    },
-    [onBuildingClick, onBuildingDoubleClick]
-  );
-
   return (
     <>
       {/* 카메라 */}
@@ -137,8 +107,6 @@ export function IsometricSceneContent({
         {/* 건물들 */}
         <InteractiveBuildings
           buildings={placedObjects}
-          selectedBuildingId={selectedBuildingId}
-          onBuildingClick={handleBuildingClick}
         />
 
         {/* 실시간 커서 (내 커서 + 다른 사용자 커서) */}
@@ -147,11 +115,10 @@ export function IsometricSceneContent({
           myCursor={myCursor}
         />
 
-        {/* 바닥 (클릭 감지용) - 호버는 useGridRaycasting에서 처리 */}
+        {/* 바닥 (투명, 클릭은 RxJS에서 처리) */}
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}
           position={[0, -0.01, 0]}
-          onClick={handleGroundClick}
         >
           <planeGeometry args={[500, 500]} />
           <meshBasicMaterial transparent opacity={0} />
