@@ -75,11 +75,12 @@ vec4 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist, float weight
 
 // Grid line function with anti-aliasing
 float gridLine(vec2 pos, float lineWidth) {
-  vec2 grid = abs(fract(pos - 0.5) - 0.5) / fwidth(pos);
+  // abs(fract(pos) - 0.5)를 쓰면 0.5 단위(Edge)에 선이 생깁니다.
+  vec2 grid = abs(fract(pos) - 0.5) / fwidth(pos);
   float line = min(grid.x, grid.y);
   return 1.0 - min(line / lineWidth, 1.0);
 }
-
+  
 void main() {
   // 1. NDC Coordinates
   vec2 ndc = vUv * 2.0 - 1.0;

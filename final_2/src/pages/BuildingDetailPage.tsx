@@ -10,7 +10,7 @@ import { useBuildingPersistence } from "@/three/hooks/useBuildingPersistence";
 import { WreathModal } from "@/components/WreathModal";
 
 // 화환 텍스처 경로 (public 폴더에 배치)
-const WREATH_TEXTURE_URL = "./Web_Interaction2025/final_2/textures/wreath.png";
+const WREATH_TEXTURE_URL = import.meta.env.BASE_URL + "textures/wreath.png";
 
 /**
  * 건물 상세 페이지
