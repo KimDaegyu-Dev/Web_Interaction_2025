@@ -16,7 +16,7 @@ interface IsometricCameraProps {
  * - Oblique 행렬이 씬 변환을 처리하므로 카메라는 고정
  */
 export function IsometricCamera({
-  position = [1, 5, 5],
+  position = [1, 10, 5],
   zoom = 50,
   near = -10000,
   far = 10000,

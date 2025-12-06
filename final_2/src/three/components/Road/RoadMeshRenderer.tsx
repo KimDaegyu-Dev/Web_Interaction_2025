@@ -1,7 +1,6 @@
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { RoadSegment } from "../../utils/clusteringAlgorithm";
-import { GRID_CONFIG } from "../../config/grid";
 
 interface RoadMeshRendererProps {
   roadSegments: RoadSegment[];
@@ -43,7 +42,7 @@ export function RoadMeshRenderer({
     segments.forEach((segment) => {
       const { x1, z1, x2, z2, width } = segment;
       const halfWidth = width * 0.5;
-      const y = 0.0; // 바닥 레벨 (GRID_CONFIG.FLOOR_LEVEL)
+      const y = 0.0; // 바닥 레벨
 
       // 방향 벡터
       const dx = x2 - x1;

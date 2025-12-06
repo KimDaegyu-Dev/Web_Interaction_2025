@@ -30,7 +30,6 @@ export interface PlacedObject {
   buildingStructure?: BuildingStructureBox[] | null;
   buildingText?: string | null;
   title?: string | null;
-  author?: string | null;
 }
 
 /**
@@ -40,7 +39,7 @@ export interface WreathInstance {
   id: string;
   buildingId: string;
   message?: string | null;
-  sender?: string | null;
+  userId: string;
   position: [number, number, number];
   hasDropped: boolean;
 }

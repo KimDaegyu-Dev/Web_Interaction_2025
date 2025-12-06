@@ -19,16 +19,19 @@ export function generateId(): string {
 }
 
 /**
- * 텍스트 길이 제한 (건물 외벽 텍스트용 - 최대 10자)
+ * 텍스트 길이 제한 (건물 외벽 텍스트용 - 최대 50자)
  */
-export function truncateText(text: string, maxLength: number = 10): string {
+export function truncateText(text: string, maxLength: number = 50): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength);
 }
 
 /**
- * 텍스트 유효성 검사 (10자 이하)
+ * 텍스트 유효성 검사 (50자 이하)
  */
-export function isValidBuildingText(text: string): boolean {
-  return text.length <= 10;
+export function isValidBuildingText(
+  text: string,
+  maxLength: number = 50
+): boolean {
+  return text.length <= maxLength;
 }
