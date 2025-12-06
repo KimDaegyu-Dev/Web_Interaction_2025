@@ -8,6 +8,7 @@ import { WreathPhysics } from "@/three/components/Wreath";
 import { useWreathPersistence } from "@/three/hooks/useWreathPersistence";
 import { useBuildingPersistence } from "@/three/hooks/useBuildingPersistence";
 import { WreathModal } from "@/components/WreathModal";
+import { useAuthStore } from "@/stores/authStore";
 
 // 화환 텍스처 경로 (public 폴더에 배치)
 const WREATH_TEXTURE_URL = import.meta.env.BASE_URL + "textures/wreath.png";
@@ -46,8 +47,8 @@ export function BuildingDetailPage() {
 
   // 화환 생성 핸들러
   const handleCreateWreath = useCallback(
-    async (message: string, sender: string) => {
-      await createWreath(message, sender);
+    async (message: string) => {
+      await createWreath(message);
       setShowWreathModal(false);
     },
     [createWreath]
@@ -99,6 +100,7 @@ export function BuildingDetailPage() {
             meshIndex={building.meshIndex}
             buildingStructure={building.buildingStructure}
             buildingText={building.buildingText}
+            title={building.title}
           />
 
           {/* 화환 물리 시뮬레이션 */}
@@ -111,7 +113,11 @@ export function BuildingDetailPage() {
           )}
 
           {/* 바닥 */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
+          <mesh
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[0, -0.5, 0]}
+            receiveShadow
+          >
             <planeGeometry args={[30, 30]} />
             <meshStandardMaterial color="#e8e8e8" />
           </mesh>
@@ -119,7 +125,7 @@ export function BuildingDetailPage() {
 
         {/* 뒤로가기 버튼 */}
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/city")}
           className="absolute top-4 left-4 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white transition-colors"
         >
           ← 목록으로
@@ -133,9 +139,6 @@ export function BuildingDetailPage() {
           <h1 className="text-2xl font-bold text-gray-800 mb-2">
             {building.title || "이름 없는 건물"}
           </h1>
-          {building.author && (
-            <p className="text-gray-600">by {building.author}</p>
-          )}
           {building.buildingText && (
             <p className="mt-4 text-lg italic text-gray-700 border-l-4 border-blue-500 pl-4">
               "{building.buildingText}"
@@ -144,12 +147,24 @@ export function BuildingDetailPage() {
         </div>
 
         {/* 화환 보내기 버튼 */}
+        {(() => {
+          const isAnonymous = useAuthStore.getState().isAnonymous();
+          if (isAnonymous) {
+            return (
+              <div className="w-full py-3 bg-gray-200 text-gray-500 rounded-xl font-bold text-lg text-center shadow-lg cursor-not-allowed">
+                🎉 축하 화환 보내기 (로그인 필요)
+              </div>
+            );
+          }
+          return (
         <button
           onClick={() => setShowWreathModal(true)}
           className="w-full py-3 bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-xl font-bold text-lg hover:from-pink-600 hover:to-orange-600 transition-all shadow-lg"
         >
           🎉 축하 화환 보내기
         </button>
+          );
+        })()}
 
         {/* 화환 목록 */}
         <div className="mt-8">
@@ -159,22 +174,31 @@ export function BuildingDetailPage() {
           
           {wreaths.length === 0 ? (
             <p className="text-gray-500 text-center py-8">
-              아직 받은 화환이 없습니다.<br />
-              첫 번째 화환을 보내보세요! 🌸
+              아직 받은 화환이 없습니다.
+              <br />첫 번째 화환을 보내보세요! 🌸
             </p>
           ) : (
             <div className="space-y-3">
-              {wreaths.map((wreath) => (
+              {wreaths.map((wreath) => {
+                const currentUser = useAuthStore.getState().user;
+                const currentUsername = useAuthStore.getState().getUsername();
+                const isCurrentUser = currentUser?.id === wreath.userId;
+                return (
                 <div
                   key={wreath.id}
                   className="p-4 bg-gradient-to-r from-pink-50 to-orange-50 rounded-lg border border-pink-100"
                 >
                   <p className="text-gray-800">{wreath.message}</p>
                   <p className="text-sm text-gray-500 mt-2">
-                    - {wreath.sender}
+                      {isCurrentUser ? (
+                        <>- {currentUsername || "나"}</>
+                      ) : (
+                        <>- 사용자 {wreath.userId.slice(0, 8)}...</>
+                      )}
                   </p>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
