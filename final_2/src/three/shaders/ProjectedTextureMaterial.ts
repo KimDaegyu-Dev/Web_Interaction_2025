@@ -32,6 +32,10 @@ export interface ProjectedMaterialOptions {
   normalThreshold?: number;
   /** 알파 임계값 (기본: 0.1) */
   alphaThreshold?: number;
+  /** 다중 박스 AABB 모드 활성화 */
+  useMultiBoxAABB?: boolean;
+  /** 각 박스의 면별 AABB 배열 (useMultiBoxAABB가 true일 때 사용) */
+  boxAABBs?: BoundingBox[];
 }
 
 /**
@@ -59,7 +63,7 @@ function getProjectionAxisInfo(direction: ProjectionDirection): {
 
 /**
  * 투영 텍스처 머티리얼 생성
- * 
+ *
  * 로컬 좌표 기반으로 텍스처를 특정 방향에서 투영합니다.
  * Y축 투영: 위/아래에서 투영 (바닥/천장)
  * X축 투영: 좌/우에서 투영 (측면)
@@ -75,9 +79,31 @@ export function createProjectedTextureMaterial(
     projectionDirection,
     normalThreshold = 0.5,
     alphaThreshold = 0.1,
+    useMultiBoxAABB = false,
+    boxAABBs = [],
   } = options;
 
   const { axis, sign } = getProjectionAxisInfo(projectionDirection);
+
+  // 다중 박스 AABB를 위한 배열 준비 (최대 16개 박스 지원)
+  const maxBoxes = 16;
+  const boxAABBArray: number[] = [];
+  for (let i = 0; i < maxBoxes; i++) {
+    if (i < boxAABBs.length) {
+      const box = boxAABBs[i];
+      boxAABBArray.push(
+        box.minX,
+        box.maxX,
+        box.minY,
+        box.maxY,
+        box.minZ,
+        box.maxZ
+      );
+    } else {
+      // 빈 슬롯은 0으로 채움
+      boxAABBArray.push(0, 0, 0, 0, 0, 0);
+    }
+  }
 
   return new THREE.ShaderMaterial({
     uniforms: {
@@ -102,6 +128,9 @@ export function createProjectedTextureMaterial(
       projectionSign: { value: sign },
       normalThreshold: { value: normalThreshold },
       alphaThreshold: { value: alphaThreshold },
+      useMultiBoxAABB: { value: useMultiBoxAABB },
+      boxAABBs: { value: new Float32Array(boxAABBArray) },
+      boxCount: { value: useMultiBoxAABB ? boxAABBs.length : 0 },
     },
     vertexShader: /* glsl */ `
       varying vec3 vLocalPosition;
@@ -123,9 +152,38 @@ export function createProjectedTextureMaterial(
       uniform float projectionSign;
       uniform float normalThreshold;
       uniform float alphaThreshold;
+      uniform bool useMultiBoxAABB;
+      uniform float boxAABBs[96]; // 16개 박스 × 6개 값 (minX, maxX, minY, maxY, minZ, maxZ)
+      uniform int boxCount;
       
       varying vec3 vLocalPosition;
       varying vec3 vLocalNormal;
+      
+      // 점이 AABB 내부에 있는지 확인
+      bool isPointInAABB(vec3 pos, vec3 min, vec3 max) {
+        return pos.x >= min.x && pos.x <= max.x &&
+               pos.y >= min.y && pos.y <= max.y &&
+               pos.z >= min.z && pos.z <= max.z;
+      }
+      
+      // 박스 AABB에서 UV 계산
+      vec2 calculateUVFromBoxAABB(vec3 pos, vec3 min, vec3 max, int axis) {
+        vec2 uv;
+        if (axis == 0) {
+          // X축 방향 투영: Z와 Y로 UV 계산
+          uv.x = 1.0 - (pos.z - min.z) / (max.z - min.z); // X축 반전
+          uv.y = (pos.y - min.y) / (max.y - min.y);
+        } else if (axis == 1) {
+          // Y축 방향 투영: X와 Z로 UV 계산
+          uv.x = (pos.x - min.x) / (max.x - min.x);
+          uv.y = (pos.z - min.z) / (max.z - min.z);
+        } else {
+          // Z축 방향 투영: X와 Y로 UV 계산
+          uv.x = (pos.x - min.x) / (max.x - min.x);
+          uv.y = (pos.y - min.y) / (max.y - min.y);
+        }
+        return uv;
+      }
       
       void main() {
         vec3 color = baseColor;
@@ -133,10 +191,48 @@ export function createProjectedTextureMaterial(
         if (hasTexture) {
           vec2 uv;
           float normalCheck;
+          bool foundBox = false;
           
+          // 다중 박스 AABB 모드
+          if (useMultiBoxAABB && boxCount > 0) {
+            // 각 박스의 AABB를 확인하여 해당 박스에 속하는지 체크
+            for (int i = 0; i < 16; i++) {
+              if (i >= boxCount) break;
+              
+              int idx = i * 6;
+              vec3 boxMin = vec3(boxAABBs[idx], boxAABBs[idx + 2], boxAABBs[idx + 4]);
+              vec3 boxMax = vec3(boxAABBs[idx + 1], boxAABBs[idx + 3], boxAABBs[idx + 5]);
+              
+              // 법선 체크
+              if (projectionAxis == 0) {
+                normalCheck = vLocalNormal.x * projectionSign;
+              } else if (projectionAxis == 1) {
+                normalCheck = vLocalNormal.y * projectionSign;
+              } else {
+                normalCheck = vLocalNormal.z * projectionSign;
+              }
+              
+              // 해당 박스의 AABB 내부이고 법선이 맞는 경우
+              if (normalCheck > normalThreshold && isPointInAABB(vLocalPosition, boxMin, boxMax)) {
+                uv = calculateUVFromBoxAABB(vLocalPosition, boxMin, boxMax, projectionAxis);
+                
+                // UV 범위 체크
+                if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
+                  vec4 texColor = texture2D(projectedTexture, uv);
+                  if (texColor.a > alphaThreshold) {
+                    color = texColor.rgb;
+                    foundBox = true;
+                    break;
+                  }
+                }
+              }
+            }
+          } else {
+            // 기존 단일 AABB 모드
           // 투영 축에 따라 UV 계산
           if (projectionAxis == 0) {
             // X축 방향 투영: Z와 Y로 UV 계산
+            // X축과 Z축에서 repeat 반대: X축은 정상, Z축은 X축 반전
             uv.x = (vLocalPosition.z - bboxMin.z) / (bboxMax.z - bboxMin.z);
             uv.y = (vLocalPosition.y - bboxMin.y) / (bboxMax.y - bboxMin.y);
             normalCheck = vLocalNormal.x * projectionSign;
@@ -147,7 +243,8 @@ export function createProjectedTextureMaterial(
             normalCheck = vLocalNormal.y * projectionSign;
           } else {
             // Z축 방향 투영: X와 Y로 UV 계산
-            uv.x = (vLocalPosition.x - bboxMin.x) / (bboxMax.x - bboxMin.x);
+            // X축과 Z축에서 repeat 반대: Z축은 X축 반전
+            uv.x = 1.0 - (vLocalPosition.x - bboxMin.x) / (bboxMax.x - bboxMin.x); // X축 반전
             uv.y = (vLocalPosition.y - bboxMin.y) / (bboxMax.y - bboxMin.y);
             normalCheck = vLocalNormal.z * projectionSign;
           }
@@ -160,6 +257,7 @@ export function createProjectedTextureMaterial(
             // 알파 임계값 이상인 부분만 색상 적용
             if (texColor.a > alphaThreshold) {
               color = texColor.rgb;
+              }
             }
           }
         }
