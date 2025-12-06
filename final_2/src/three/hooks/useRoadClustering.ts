@@ -2,7 +2,6 @@ import { useMemo, useEffect, useState } from "react";
 import {
   calculateRoadNetwork,
   roadSegmentsToShaderFormat,
-  getRoadNetworkStats,
   type RoadNetwork,
   type RoadSegment,
 } from "../utils/clusteringAlgorithm";
@@ -13,8 +12,8 @@ interface UseRoadClusteringResult {
   network: RoadNetwork;
   /** 셰이더에 전달할 도로 선분 목록 */
   roadSegments: RoadSegment[];
-  /** 셰이더 Uniform용 데이터 */
-  shaderData: { positions: Float32Array; widths: Float32Array; count: number };
+  /** 셰이더 Uniform용 Float32Array */
+  shaderData: Float32Array;
   /** 클러스터 개수 */
   clusterCount: number;
   /** 전체 도로 선분 개수 */
@@ -25,9 +24,8 @@ interface UseRoadClusteringResult {
  * 도로 클러스터링 훅 (개선된 버전)
  *
  * 건물 목록을 받아 도로 네트워크를 계산합니다.
- * - DBSCAN 기반 밀도 클러스터링
- * - Edge-Centric 골목길 생성
- * - 다중 가중치 A* 경로탐색 (밀집 회피, 직선 선호)
+ * - Manhattan Distance 기반 클러스터링
+ * - 클러스터 경계선(perimeter) 추출
  * - MST(최소 신장 트리)로 클러스터 간 연결
  *
  * @param buildings 건물 목록
@@ -38,8 +36,7 @@ export function useRoadClustering(
 ): UseRoadClusteringResult {
   const [network, setNetwork] = useState<RoadNetwork>({
     clusters: [],
-    smallRoads: [],
-    bigRoads: [],
+    mstEdges: [],
     allRoadSegments: [],
   });
 
@@ -48,13 +45,13 @@ export function useRoadClustering(
     const newNetwork = calculateRoadNetwork(buildings);
     setNetwork(newNetwork);
 
-    const stats = getRoadNetworkStats(newNetwork);
     console.log(
-      `[RoadClustering] Recalculated: ${
-        stats.totalClusters
-      } clusters (avg size: ${stats.avgClusterSize.toFixed(1)}), ` +
-        `${newNetwork.allRoadSegments.length} total roads (small: ${stats.totalSmallRoads}, big: ${stats.totalBigRoads}) ` +
-        `from ${buildings.length} buildings`
+      `[RoadClustering] Recalculated: ${newNetwork.clusters.length} clusters, ` +
+        `${newNetwork.allRoadSegments.length} road segments (perimeter: ${
+          newNetwork.allRoadSegments.length - newNetwork.mstEdges.length
+        }, MST: ${newNetwork.mstEdges.length}) from ${
+          buildings.length
+        } buildings`
     );
   }, [buildings]);
 
