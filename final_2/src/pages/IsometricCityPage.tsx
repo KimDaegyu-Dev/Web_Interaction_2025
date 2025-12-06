@@ -7,9 +7,10 @@ import { useGridInteraction } from "@/three/hooks/useGridInteraction";
 import { useRealtimeCursors } from "@/three/hooks/useRealtimeCursors";
 import { useRoadClustering } from "@/three/hooks/useRoadClustering";
 import { BuildingModal } from "@/components/BuildingModal";
-import { GRID_CONFIG } from "@/three/config/grid";
 import { useMousePositionStore } from "@/stores/mousePositionStore";
 import { IsometricSceneContent } from "./IsometricSceneContent";
+import { useAuthStore } from "@/stores/authStore";
+import { useMultiBoxAABBStore } from "@/stores/multiBoxAABBStore";
 
 /**
  * 메인 아이소메트릭 도시 그리드 페이지
@@ -60,8 +61,6 @@ export function IsometricCityPage() {
 
   // 그리드 인터랙션
   const {
-    hoveredCell,
-    selectedBuildingId,
     selectedBuilding,
     modalMode,
     error,
@@ -69,7 +68,6 @@ export function IsometricCityPage() {
     onCellPointerOver,
     onCellPointerOut,
     onCellClick,
-    setModalMode,
     confirmCreate,
     confirmDelete,
     closeModal,
@@ -87,6 +85,10 @@ export function IsometricCityPage() {
   // 그라데이션 토글 상태
   const [enableGradients, setEnableGradients] = useState(true);
 
+  // 다중 박스 AABB 모드 토글
+  const useMultiBoxAABB = useMultiBoxAABBStore((state) => state.enabled);
+  const toggleMultiBoxAABB = useMultiBoxAABBStore((state) => state.toggle);
+
   // 건물 더블클릭 → 상세 페이지로 이동
   const handleBuildingDoubleClick = useCallback(
     (buildingId: string) => {
@@ -97,7 +99,7 @@ export function IsometricCityPage() {
 
   return (
     <div className="w-screen h-screen">
-      <Canvas shadows gl={{ antialias: true }}>
+      <Canvas shadows gl={{ antialias: true }} className="cursor-none">
         <Stats />
         <IsometricSceneContent
           placedObjects={placedObjects}
@@ -125,7 +127,9 @@ export function IsometricCityPage() {
             🏙️ 아이소메트릭 도시
           </h1>
           <p className="text-sm text-gray-600">
-            빈 셀을 클릭하여 건물을 추가하세요
+            {useAuthStore.getState().isAnonymous()
+              ? "👁️ 방문자 모드 - 도시를 둘러보세요"
+              : "빈 셀을 클릭하여 건물을 추가하세요"}
           </p>
           <div className="text-xs text-gray-400 mt-1">
             우클릭 드래그: 이동 | 휠: 줌
@@ -203,6 +207,39 @@ export function IsometricCityPage() {
               strokeLinecap="round"
               strokeLinejoin="round"
               d="M9.348 14.651a3.75 3.75 0 010-5.303m5.304 0a3.75 3.75 0 010 5.303m-7.425 2.122a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.808-3.808-9.98 0-13.789m13.788 0c3.808 3.808 3.808 9.98 0 13.789M12 12h.008v.008H12V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
+            />
+          </svg>
+        </button>
+
+        {/* 다중 박스 AABB 모드 토글 버튼 */}
+        <button
+          onClick={toggleMultiBoxAABB}
+          className={`
+            p-2 rounded-full transition-colors duration-200
+            ${
+              useMultiBoxAABB
+                ? "bg-green-500 text-white hover:bg-green-600"
+                : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+            }
+          `}
+          title={
+            useMultiBoxAABB
+              ? "다중 박스 AABB 모드 끄기"
+              : "다중 박스 AABB 모드 켜기"
+          }
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-6 h-6"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
             />
           </svg>
         </button>
