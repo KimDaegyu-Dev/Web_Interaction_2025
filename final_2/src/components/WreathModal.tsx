@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 interface WreathModalProps {
-  onConfirm: (message: string, sender: string) => void;
+  onConfirm: (message: string) => void;
   onClose: () => void;
 }
 
@@ -10,12 +10,11 @@ interface WreathModalProps {
  */
 export function WreathModal({ onConfirm, onClose }: WreathModalProps) {
   const [message, setMessage] = useState("");
-  const [sender, setSender] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || !sender.trim()) return;
-    onConfirm(message, sender);
+    if (!message.trim()) return;
+    onConfirm(message);
   };
 
   return (
@@ -40,21 +39,6 @@ export function WreathModal({ onConfirm, onClose }: WreathModalProps) {
               rows={3}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none"
-            />
-          </div>
-
-          {/* 보낸 사람 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              보낸 사람
-            </label>
-            <input
-              type="text"
-              value={sender}
-              onChange={(e) => setSender(e.target.value)}
-              placeholder="이름을 입력하세요"
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             />
           </div>
 

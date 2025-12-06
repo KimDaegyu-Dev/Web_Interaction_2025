@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn, isValidBuildingText } from "@/utils";
 import { getAllBuildingPresets } from "@/three/config/buildingPresets";
 
@@ -7,18 +7,15 @@ interface BuildingModalProps {
   building?: {
     id: string;
     title?: string | null;
-    author?: string | null;
     buildingText?: string | null;
     meshIndex: number;
   } | null;
   onConfirm: (data: {
     title: string;
-    author: string;
     buildingText: string;
     meshIndex: number;
-    password: string;
   }) => void;
-  onDelete?: (password: string) => void;
+  onDelete?: () => void;
   onClose: () => void;
   error?: string | null;
 }
@@ -37,15 +34,23 @@ export function BuildingModal({
   const presets = getAllBuildingPresets();
   
   const [title, setTitle] = useState(building?.title || "");
-  const [author, setAuthor] = useState(building?.author || "");
-  const [buildingText, setBuildingText] = useState(building?.buildingText || "");
+  const [buildingText, setBuildingText] = useState(
+    building?.buildingText || ""
+  );
   const [meshIndex, setMeshIndex] = useState(building?.meshIndex || 0);
-  const [password, setPassword] = useState("");
   const [textError, setTextError] = useState<string | null>(null);
 
+  // 건물 생성 모드일 때 랜덤으로 건물 타입 선택
+  useEffect(() => {
+    if (mode === "create" && !building) {
+      const randomIndex = Math.floor(Math.random() * presets.length);
+      setMeshIndex(presets[randomIndex].meshIndex);
+    }
+  }, [mode, building, presets]);
+
   const handleBuildingTextChange = (value: string) => {
-    if (value.length > 10) {
-      setTextError("외벽 텍스트는 최대 10자까지 입력 가능합니다.");
+    if (value.length > 50) {
+      setTextError("외벽 텍스트는 최대 50자까지 입력 가능합니다.");
       return;
     }
     setTextError(null);
@@ -56,21 +61,19 @@ export function BuildingModal({
     e.preventDefault();
     
     if (mode === "delete") {
-      onDelete?.(password);
+      onDelete?.();
       return;
     }
 
-    if (!isValidBuildingText(buildingText)) {
-      setTextError("외벽 텍스트는 최대 10자까지 입력 가능합니다.");
+    if (!isValidBuildingText(buildingText, 50)) {
+      setTextError("외벽 텍스트는 최대 50자까지 입력 가능합니다.");
       return;
     }
 
     onConfirm({
       title,
-      author,
       buildingText,
       meshIndex,
-      password,
     });
   };
 
@@ -90,24 +93,6 @@ export function BuildingModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {mode !== "delete" && (
             <>
-              {/* 건물 타입 선택 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  건물 타입
-                </label>
-                <select
-                  value={meshIndex}
-                  onChange={(e) => setMeshIndex(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  {presets.map((preset) => (
-                    <option key={preset.meshIndex} value={preset.meshIndex}>
-                      {preset.name} - {preset.description}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               {/* 제목 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -122,31 +107,17 @@ export function BuildingModal({
                 />
               </div>
 
-              {/* 작성자 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  작성자
-                </label>
-                <input
-                  type="text"
-                  value={author}
-                  onChange={(e) => setAuthor(e.target.value)}
-                  placeholder="예: 홍길동"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
               {/* 외벽 텍스트 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  외벽 텍스트 <span className="text-gray-400">(최대 10자)</span>
+                  외벽 텍스트 <span className="text-gray-400">(최대 50자)</span>
                 </label>
                 <input
                   type="text"
                   value={buildingText}
                   onChange={(e) => handleBuildingTextChange(e.target.value)}
                   placeholder="예: 행복하자"
-                  maxLength={10}
+                  maxLength={50}
                   className={cn(
                     "w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent",
                     textError
@@ -157,7 +128,7 @@ export function BuildingModal({
                 <div className="flex justify-between mt-1">
                   <span className="text-xs text-red-500">{textError}</span>
                   <span className="text-xs text-gray-400">
-                    {buildingText.length}/10
+                    {buildingText.length}/50
                   </span>
                 </div>
               </div>
@@ -165,25 +136,8 @@ export function BuildingModal({
           )}
 
           {mode === "delete" && (
-            <p className="text-gray-600">
-              이 건물을 삭제하시겠습니까? 삭제하려면 비밀번호를 입력하세요.
-            </p>
+            <p className="text-gray-600">이 건물을 삭제하시겠습니까?</p>
           )}
-
-          {/* 비밀번호 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              비밀번호 {mode === "create" && "(수정/삭제 시 필요)"}
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="비밀번호 입력"
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
 
           {/* 에러 메시지 */}
           {error && (
