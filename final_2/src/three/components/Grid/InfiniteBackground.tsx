@@ -5,7 +5,7 @@ import gsap from "gsap";
 import { GRID_CONFIG } from "../../config/grid";
 import { calculateObliqueMatrix } from "../../utils/projection";
 import type { CursorPosition, PlacedObject, ProjectionParams } from "../../config/types";
-import type { RoadSegment } from "../../utils/clusteringAlgorithm";
+import { roadSegmentsToShaderFormat, type RoadSegment } from "../../utils/clusteringAlgorithm";
 
 const vertexShader = `
 varying vec2 vUv;
@@ -33,6 +33,7 @@ uniform int uCursorCount;
 // 도로
 uniform vec4 uRoadSegments[150];
 uniform int uRoadSegmentCount;
+uniform float uRoadWidths[150];
 
 uniform float uInfluenceRadius;
 uniform float uRoadWidth;
@@ -162,7 +163,9 @@ void main() {
   float roadIntensity = 0.0;
   for (int i = 0; i < 150; i++) {
     if (i >= uRoadSegmentCount) break;
-    roadIntensity = max(roadIntensity, roadSegmentLine(worldPos, uRoadSegments[i], uRoadWidth));
+   float currentWidth = uRoadWidth * uRoadWidths[i];
+    
+    roadIntensity = max(roadIntensity, roadSegmentLine(worldPos, uRoadSegments[i], currentWidth));
   }
   
   // 도로는 그리드 위에 진하게 덮어씁니다.
@@ -211,9 +214,10 @@ export function InfiniteBackground({
         value: Array.from({ length: 50 }, () => new THREE.Vector3(0, 0, 0)),
       },
       uCursorCount: { value: 0 },
-      uRoadSegments: {
-        value: Array.from({ length: 150 }, () => new THREE.Vector4(0, 0, 0, 0)),
-      },
+     uRoadSegments: { value: Array.from({ length: 150 }, () => new THREE.Vector4()) },
+      
+      // [추가] 두께 데이터 배열 초기화
+      uRoadWidths: { value: new Float32Array(150) },
       uRoadSegmentCount: { value: 0 },
       uInfluenceRadius: { value: GRID_CONFIG.CURSOR_INFLUENCE_RADIUS },
       uRoadWidth: { value: GRID_CONFIG.ROAD.WIDTH },
@@ -299,15 +303,27 @@ export function InfiniteBackground({
   useEffect(() => {
     if (!materialRef.current) return;
 
-    const segments = roadSegments.slice(0, 150).map(
-      (segment) => new THREE.Vector4(segment.x1, segment.z1, segment.x2, segment.z2)
-    );
+    // 포맷 변환 함수 호출 (positions와 widths를 분리해서 받음)
+    const { positions, widths } = roadSegmentsToShaderFormat(roadSegments, 150);
 
-    while (segments.length < 150) {
-      segments.push(new THREE.Vector4(0, 0, 0, 0));
+    // Uniform 업데이트 (Vector4 배열로 변환하는 복잡한 과정 대신 Float32Array 직접 주입 가능)
+    // Three.js ShaderMaterial은 배열 Uniform에 대해 Float32Array를 지원하지 않을 수 있으므로
+    // 기존처럼 Vector4 배열로 변환하거나, raw shader data를 직접 넣어야 함.
+    // 가장 안전한 방법은 기존 로직(Vector4) 유지 + Widths(Float array) 추가입니다.
+    
+    // 1. 위치 데이터 (기존 방식 유지 - Vector4 Array)
+    const segmentVec4s = materialRef.current.uniforms.uRoadSegments.value;
+    for(let i=0; i<150; i++) {
+        if(i < roadSegments.length) {
+            segmentVec4s[i].set(positions[i*4], positions[i*4+1], positions[i*4+2], positions[i*4+3]);
+        } else {
+            segmentVec4s[i].set(0,0,0,0);
+        }
     }
-
-    materialRef.current.uniforms.uRoadSegments.value = segments;
+    
+    // 2. [추가] 두께 데이터 (Float Array는 직접 할당 가능)
+    materialRef.current.uniforms.uRoadWidths.value = widths;
+    
     materialRef.current.uniforms.uRoadSegmentCount.value = Math.min(roadSegments.length, 150);
   }, [roadSegments]);
 
