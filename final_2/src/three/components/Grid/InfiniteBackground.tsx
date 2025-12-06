@@ -11,6 +11,8 @@ import type {
 } from "../../config/types";
 import { type RoadSegment } from "../../utils/clusteringAlgorithm";
 
+// ... (previous imports)
+
 const vertexShader = `
 varying vec2 vUv;
 void main() {
@@ -19,6 +21,7 @@ void main() {
   gl_Position = vec4(position.xy, 0.999, 1.0);
 }
 `;
+
 const fragmentShader = `
 precision highp float;
 
@@ -26,6 +29,7 @@ uniform mat4 uInverseViewProj;
 uniform mat4 uInverseOblique;
 uniform float uGridSize;
 uniform float uTime;
+uniform float uIsDarkMode; // 0.0 = Light, 1.0 = Dark
 
 // 건물 위치 (Glow 효과용)
 uniform vec3 uBuildingPositions[50];
@@ -36,14 +40,13 @@ uniform vec3 uCursorPositions[50];
 uniform int uCursorCount;
 
 // 도로
-// 도로 (Texture로 변경됨)
 uniform sampler2D uRoadPositionTexture;
 uniform sampler2D uRoadWidthTexture;
 uniform int uRoadSegmentCount;
 
 uniform float uInfluenceRadius;
 uniform float uRoadWidth;
-uniform vec3 uRoadColor;
+uniform vec3 uRoadColor; // Not used directly anymore, hardcoded per mode
 
 varying vec2 vUv;
 
@@ -51,10 +54,22 @@ varying vec2 vUv;
 vec4 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist, float weight) {
   float dist = length(worldPos - centerPos) / maxDist;
   
-  vec3 color1 = vec3(0.35, 0.36, 0.38); 
-  vec3 color2 = vec3(0.30, 0.32, 0.35); 
-  vec3 color3 = vec3(0.25, 0.28, 0.32); 
-  vec3 color4 = vec3(0.20, 0.22, 0.25); 
+  // Light Mode Colors
+  vec3 l1 = vec3(0.95, 0.96, 0.98); 
+  vec3 l2 = vec3(0.90, 0.92, 0.95); 
+  vec3 l3 = vec3(0.85, 0.88, 0.92); 
+  vec3 l4 = vec3(0.80, 0.82, 0.85);
+
+  // Dark Mode Colors
+  vec3 d1 = vec3(0.35, 0.36, 0.38); 
+  vec3 d2 = vec3(0.30, 0.32, 0.35); 
+  vec3 d3 = vec3(0.25, 0.28, 0.32); 
+  vec3 d4 = vec3(0.20, 0.22, 0.25);
+
+  vec3 color1 = mix(l1, d1, uIsDarkMode);
+  vec3 color2 = mix(l2, d2, uIsDarkMode);
+  vec3 color3 = mix(l3, d3, uIsDarkMode);
+  vec3 color4 = mix(l4, d4, uIsDarkMode);
   
   float t1 = smoothstep(0.0, 0.3, dist);
   float t2 = smoothstep(0.3, 0.6, dist);
@@ -118,8 +133,11 @@ void main() {
   vec3 intersectPoint = realOrigin + realDir * t;
   vec2 worldPos = intersectPoint.xz;
 
-  // --- 1. 배경 그라데이션 ---
-  vec3 baseColor = vec3(0.02, 0.02, 0.02); 
+  // --- 1. 배경 설정 ---
+  vec3 lightBase = vec3(0.96, 0.96, 0.96);
+  vec3 darkBase = vec3(0.02, 0.02, 0.02);
+  vec3 baseColor = mix(lightBase, darkBase, uIsDarkMode);
+  
   vec3 finalGradient = baseColor;
   float minDistToLight = 1000.0;
   
@@ -155,20 +173,19 @@ void main() {
   float distFade = 1.0 - smoothstep(5.0, 50.0, minDistToLight);
   
   if (distFade > 0.01) {
-    // [중요] * 2.0을 제거했습니다. 이제 그리드는 건물 셀 크기와 1:1로 매칭됩니다.
-    // 건물 내부를 가로지르는 십자선이 사라지고, 건물 외곽선에만 그리드가 그려집니다.
     vec2 gridUv = worldPos / uGridSize; 
-    
     grid = gridLine(gridUv, 1.0) * distFade * 0.3;
   }
   
-  vec3 gridColor = vec3(0.15, 0.15, 0.2); // 어두운 회색 그리드
+  vec3 lightGrid = vec3(0.75, 0.75, 0.8);
+  vec3 darkGrid = vec3(0.15, 0.15, 0.2);
+  vec3 gridColor = mix(lightGrid, darkGrid, uIsDarkMode);
+
   vec3 finalColor = finalGradient + gridColor * grid;
   
   // --- 3. 도로 렌더링 ---
   float roadIntensity = 0.0;
 
-  
   // 64x64 = 4096 Loop
   for (int i = 0; i < 4096; i++) {
     if (i >= uRoadSegmentCount) break;
@@ -186,7 +203,10 @@ void main() {
   }
   
   // 도로는 그리드 위에 진하게 덮어씁니다.
-  vec3 posterRoadColor = vec3(1.0, 1.0, 1.0); 
+  vec3 lightRoad = vec3(0.2, 0.2, 0.25);
+  vec3 darkRoad = vec3(1.0, 1.0, 1.0);
+  vec3 posterRoadColor = mix(lightRoad, darkRoad, uIsDarkMode);
+
   finalColor = mix(finalColor, posterRoadColor, roadIntensity);
   
   gl_FragColor = vec4(finalColor, 1.0);
@@ -200,6 +220,7 @@ interface InfiniteBackgroundProps {
   roadSegments?: RoadSegment[];
   projectionParams: ProjectionParams;
   getPanOffset: () => THREE.Vector3;
+  isDarkMode?: boolean;
 }
 
 /**
@@ -213,6 +234,7 @@ export function InfiniteBackground({
   roadSegments = [],
   projectionParams,
   getPanOffset,
+  isDarkMode = true,
 }: InfiniteBackgroundProps) {
   const { camera, gl, clock } = useThree();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
@@ -223,6 +245,7 @@ export function InfiniteBackground({
       uInverseOblique: { value: new THREE.Matrix4() },
       uGridSize: { value: GRID_CONFIG.CELL_SIZE },
       uTime: { value: 0 },
+      uIsDarkMode: { value: isDarkMode ? 1.0 : 0.0 }, // Initialize with prop
       uBuildingPositions: {
         value: Array.from({ length: 50 }, () => new THREE.Vector3(0, 0, 0)),
       },
@@ -241,6 +264,17 @@ export function InfiniteBackground({
     }),
     []
   );
+
+  useEffect(() => {
+    if (materialRef.current) {
+      // Smooth transition for isDarkMode
+      gsap.to(materialRef.current.uniforms.uIsDarkMode, {
+        value: isDarkMode ? 1.0 : 0.0,
+        duration: 0.5,
+        ease: "power2.inOut",
+      });
+    }
+  }, [isDarkMode]);
 
   const tempMatrix = useMemo(() => new THREE.Matrix4(), []);
   const tempObliqueMatrix = useMemo(() => new THREE.Matrix4(), []);

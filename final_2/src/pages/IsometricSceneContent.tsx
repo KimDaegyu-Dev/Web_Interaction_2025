@@ -32,6 +32,7 @@ interface IsometricSceneContentProps {
     top: boolean;
     bottom: boolean;
   }) => void;
+  isDarkMode: boolean; // Added prop
 }
 
 /**
@@ -53,12 +54,13 @@ export function IsometricSceneContent({
   onBuildingNavigate,
   updateCursor,
   onEdgeZoneChange,
+  isDarkMode, // Added prop destructuring
 }: IsometricSceneContentProps) {
   const sceneGroupRef = useRef<THREE.Group>(null);
-  
+
   // 전역 마우스 위치 상태
   const mousePosition = useMousePositionStore((state) => state.mousePosition);
-  
+
   // 투영 파라미터 (기본 Isometric)
   const projectionParams = DEFAULT_PROJECTION_PARAMS;
 
@@ -83,7 +85,10 @@ export function IsometricSceneContent({
     getPanOffset,
     onCellPointerOver: (x, z) => {
       onCellPointerOver(x, z);
-      updateCursor(x + GRID_CONFIG.CELL_SIZE / 2, z + GRID_CONFIG.CELL_SIZE / 2);
+      updateCursor(
+        x + GRID_CONFIG.CELL_SIZE / 2,
+        z + GRID_CONFIG.CELL_SIZE / 2
+      );
     },
     onCellPointerOut,
   });
@@ -105,21 +110,13 @@ export function IsometricSceneContent({
       {/* 패닝 적용되는 씬 그룹 (Oblique 투영) */}
       <group ref={sceneGroupRef}>
         {/* 건물들 */}
-        <InteractiveBuildings
-          buildings={placedObjects}
-        />
+        <InteractiveBuildings buildings={placedObjects} />
 
         {/* 실시간 커서 (내 커서 + 다른 사용자 커서) */}
-        <RealtimeCursors
-          cursors={cursors}
-          myCursor={myCursor}
-        />
+        <RealtimeCursors cursors={cursors} myCursor={myCursor} />
 
         {/* 바닥 (투명, 클릭은 RxJS에서 처리) */}
-        <mesh
-          rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, -0.01, 0]}
-        >
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
           <planeGeometry args={[500, 500]} />
           <meshBasicMaterial transparent opacity={0} />
         </mesh>
@@ -133,6 +130,7 @@ export function IsometricSceneContent({
         roadSegments={roadSegments}
         projectionParams={projectionParams}
         getPanOffset={getPanOffset}
+        isDarkMode={isDarkMode}
       />
     </>
   );
