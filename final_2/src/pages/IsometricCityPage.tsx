@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Canvas } from "@react-three/fiber";
+import { Stats } from "@react-three/drei";
 import { EdgeZoneIndicator } from "@/three/components/EdgeZoneIndicator";
 import { useGridInteraction } from "@/three/hooks/useGridInteraction";
 import { useRealtimeCursors } from "@/three/hooks/useRealtimeCursors";
@@ -94,6 +95,7 @@ export function IsometricCityPage() {
   return (
     <div className="w-screen h-screen">
       <Canvas shadows gl={{ antialias: true }}>
+        <Stats />
         <IsometricSceneContent
           placedObjects={placedObjects}
           cursors={cursors}
