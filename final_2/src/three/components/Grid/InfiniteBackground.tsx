@@ -4,8 +4,12 @@ import * as THREE from "three";
 import gsap from "gsap";
 import { GRID_CONFIG } from "../../config/grid";
 import { calculateObliqueMatrix } from "../../utils/projection";
-import type { CursorPosition, PlacedObject, ProjectionParams } from "../../config/types";
-import { roadSegmentsToShaderFormat, type RoadSegment } from "../../utils/clusteringAlgorithm";
+import type {
+  CursorPosition,
+  PlacedObject,
+  ProjectionParams,
+} from "../../config/types";
+import { type RoadSegment } from "../../utils/clusteringAlgorithm";
 
 const vertexShader = `
 varying vec2 vUv;
@@ -14,7 +18,8 @@ void main() {
   // Force full-screen quad at far plane (z=0.999 in NDC)
   gl_Position = vec4(position.xy, 0.999, 1.0);
 }
-`;const fragmentShader = `
+`;
+const fragmentShader = `
 precision highp float;
 
 uniform mat4 uInverseViewProj;
@@ -31,9 +36,10 @@ uniform vec3 uCursorPositions[50];
 uniform int uCursorCount;
 
 // 도로
-uniform vec4 uRoadSegments[150];
+// 도로 (Texture로 변경됨)
+uniform sampler2D uRoadPositionTexture;
+uniform sampler2D uRoadWidthTexture;
 uniform int uRoadSegmentCount;
-uniform float uRoadWidths[150];
 
 uniform float uInfluenceRadius;
 uniform float uRoadWidth;
@@ -45,10 +51,10 @@ varying vec2 vUv;
 vec4 getGradientColor(vec2 worldPos, vec2 centerPos, float maxDist, float weight) {
   float dist = length(worldPos - centerPos) / maxDist;
   
-  vec3 color1 = vec3(0.95, 0.96, 0.98); 
-  vec3 color2 = vec3(0.90, 0.92, 0.95); 
-  vec3 color3 = vec3(0.85, 0.88, 0.92); 
-  vec3 color4 = vec3(0.80, 0.82, 0.85); 
+  vec3 color1 = vec3(0.35, 0.36, 0.38); 
+  vec3 color2 = vec3(0.30, 0.32, 0.35); 
+  vec3 color3 = vec3(0.25, 0.28, 0.32); 
+  vec3 color4 = vec3(0.20, 0.22, 0.25); 
   
   float t1 = smoothstep(0.0, 0.3, dist);
   float t2 = smoothstep(0.3, 0.6, dist);
@@ -113,7 +119,7 @@ void main() {
   vec2 worldPos = intersectPoint.xz;
 
   // --- 1. 배경 그라데이션 ---
-  vec3 baseColor = vec3(0.96, 0.96, 0.96); 
+  vec3 baseColor = vec3(0.02, 0.02, 0.02); 
   vec3 finalGradient = baseColor;
   float minDistToLight = 1000.0;
   
@@ -156,20 +162,31 @@ void main() {
     grid = gridLine(gridUv, 1.0) * distFade * 0.3;
   }
   
-  vec3 gridColor = vec3(0.75, 0.75, 0.8); // 연한 회색 그리드
+  vec3 gridColor = vec3(0.15, 0.15, 0.2); // 어두운 회색 그리드
   vec3 finalColor = finalGradient + gridColor * grid;
   
   // --- 3. 도로 렌더링 ---
   float roadIntensity = 0.0;
-  for (int i = 0; i < 150; i++) {
+
+  
+  // 64x64 = 4096 Loop
+  for (int i = 0; i < 4096; i++) {
     if (i >= uRoadSegmentCount) break;
-   float currentWidth = uRoadWidth * uRoadWidths[i];
     
-    roadIntensity = max(roadIntensity, roadSegmentLine(worldPos, uRoadSegments[i], currentWidth));
+    // 1D Index -> 2D UV
+    float size = 64.0;
+    vec2 uv = vec2(mod(float(i), size), floor(float(i) / size)) / size;
+    uv += vec2(0.5 / size); // Pixel center offset
+
+    vec4 segment = texture2D(uRoadPositionTexture, uv);
+    float w = texture2D(uRoadWidthTexture, uv).r;
+    float currentWidth = uRoadWidth * w;
+    
+    roadIntensity = max(roadIntensity, roadSegmentLine(worldPos, segment, currentWidth));
   }
   
   // 도로는 그리드 위에 진하게 덮어씁니다.
-  vec3 posterRoadColor = vec3(0.2, 0.2, 0.25); 
+  vec3 posterRoadColor = vec3(1.0, 1.0, 1.0); 
   finalColor = mix(finalColor, posterRoadColor, roadIntensity);
   
   gl_FragColor = vec4(finalColor, 1.0);
@@ -204,7 +221,7 @@ export function InfiniteBackground({
     () => ({
       uInverseViewProj: { value: new THREE.Matrix4() },
       uInverseOblique: { value: new THREE.Matrix4() },
-      uGridSize: { value: GRID_CONFIG.CELL_SIZE  },
+      uGridSize: { value: GRID_CONFIG.CELL_SIZE },
       uTime: { value: 0 },
       uBuildingPositions: {
         value: Array.from({ length: 50 }, () => new THREE.Vector3(0, 0, 0)),
@@ -214,27 +231,72 @@ export function InfiniteBackground({
         value: Array.from({ length: 50 }, () => new THREE.Vector3(0, 0, 0)),
       },
       uCursorCount: { value: 0 },
-     uRoadSegments: { value: Array.from({ length: 150 }, () => new THREE.Vector4()) },
-      
-      // [추가] 두께 데이터 배열 초기화
-      uRoadWidths: { value: new Float32Array(150) },
+      // [변경] 도로 데이터를 텍스처로 전달 (Limit 150 -> 4096)
+      uRoadPositionTexture: { value: null },
+      uRoadWidthTexture: { value: null },
       uRoadSegmentCount: { value: 0 },
       uInfluenceRadius: { value: GRID_CONFIG.CURSOR_INFLUENCE_RADIUS },
       uRoadWidth: { value: GRID_CONFIG.ROAD.WIDTH },
       uRoadColor: { value: new THREE.Color(GRID_CONFIG.ROAD.COLOR) },
     }),
-    [],
+    []
   );
 
   const tempMatrix = useMemo(() => new THREE.Matrix4(), []);
   const tempObliqueMatrix = useMemo(() => new THREE.Matrix4(), []);
+
+  // 텍스처 초기화 (64x64 = 4096개 도로 지원)
+  const TEXTURE_SIZE = 64;
+  const MAX_ROADS = TEXTURE_SIZE * TEXTURE_SIZE;
+
+  // 데이터 텍스처 레퍼런스 유지
+  const roadDataParams = useMemo(() => {
+    const posData = new Float32Array(MAX_ROADS * 4); // RGBA
+    const widthData = new Float32Array(MAX_ROADS * 1); // R
+
+    const posTexture = new THREE.DataTexture(
+      posData,
+      TEXTURE_SIZE,
+      TEXTURE_SIZE,
+      THREE.RGBAFormat,
+      THREE.FloatType
+    );
+    posTexture.minFilter = THREE.NearestFilter;
+    posTexture.magFilter = THREE.NearestFilter;
+    posTexture.needsUpdate = true;
+
+    const widthTexture = new THREE.DataTexture(
+      widthData,
+      TEXTURE_SIZE,
+      TEXTURE_SIZE,
+      THREE.RedFormat,
+      THREE.FloatType
+    );
+    widthTexture.minFilter = THREE.NearestFilter;
+    widthTexture.magFilter = THREE.NearestFilter;
+    widthTexture.needsUpdate = true;
+
+    return { posTexture, widthTexture, posData, widthData };
+  }, []);
+
+  // Uniform에 텍스처 연결
+  useEffect(() => {
+    if (!materialRef.current) return;
+    materialRef.current.uniforms.uRoadPositionTexture.value =
+      roadDataParams.posTexture;
+    materialRef.current.uniforms.uRoadWidthTexture.value =
+      roadDataParams.widthTexture;
+  }, [roadDataParams]);
 
   // 건물 클러스터링 (공간 해싱)
   useEffect(() => {
     if (!materialRef.current) return;
 
     const CLUSTER_SIZE = 10;
-    const clusterMap = new Map<string, { buildings: typeof buildings; count: number }>();
+    const clusterMap = new Map<
+      string,
+      { buildings: typeof buildings; count: number }
+    >();
 
     buildings.forEach((building) => {
       const clusterX = Math.floor(building.position[0] / CLUSTER_SIZE);
@@ -248,8 +310,12 @@ export function InfiniteBackground({
     });
 
     const clusters = Array.from(clusterMap.values()).map((cluster) => {
-      const avgX = cluster.buildings.reduce((sum, b) => sum + b.position[0], 0) / cluster.buildings.length;
-      const avgZ = cluster.buildings.reduce((sum, b) => sum + b.position[2], 0) / cluster.buildings.length;
+      const avgX =
+        cluster.buildings.reduce((sum, b) => sum + b.position[0], 0) /
+        cluster.buildings.length;
+      const avgZ =
+        cluster.buildings.reduce((sum, b) => sum + b.position[2], 0) /
+        cluster.buildings.length;
       return new THREE.Vector3(avgX, cluster.buildings.length, avgZ);
     });
 
@@ -257,8 +323,14 @@ export function InfiniteBackground({
       clusters.push(new THREE.Vector3(0, 0, 0));
     }
 
-    materialRef.current.uniforms.uBuildingPositions.value = clusters.slice(0, 50);
-    materialRef.current.uniforms.uBuildingCount.value = Math.min(clusterMap.size, 50);
+    materialRef.current.uniforms.uBuildingPositions.value = clusters.slice(
+      0,
+      50
+    );
+    materialRef.current.uniforms.uBuildingCount.value = Math.min(
+      clusterMap.size,
+      50
+    );
   }, [buildings]);
 
   // 커서 위치 업데이트 (GSAP 애니메이션)
@@ -279,7 +351,8 @@ export function InfiniteBackground({
       .slice(0, 50)
       .map((cursor) => new THREE.Vector3(cursor.gridX, 0, cursor.gridZ));
 
-    const currentPositions = materialRef.current.uniforms.uCursorPositions.value;
+    const currentPositions =
+      materialRef.current.uniforms.uCursorPositions.value;
 
     targetPositions.forEach((targetPos, index) => {
       if (currentPositions[index]) {
@@ -291,41 +364,45 @@ export function InfiniteBackground({
             duration: 0.3,
             ease: "power2.out",
             overwrite: true,
+            onUpdate: () => {
+              // 필요한 경우 추가 로직
+            },
           });
         }
       }
     });
 
-    materialRef.current.uniforms.uCursorCount.value = Math.min(allCursors.length, 50);
+    materialRef.current.uniforms.uCursorCount.value = Math.min(
+      allCursors.length,
+      50
+    );
   }, [cursors, myCursor]);
 
-  // 도로 선분 업데이트
+  // 도로 선분 업데이트 (DataTexture 방식)
   useEffect(() => {
     if (!materialRef.current) return;
 
-    // 포맷 변환 함수 호출 (positions와 widths를 분리해서 받음)
-    const { positions, widths } = roadSegmentsToShaderFormat(roadSegments, 150);
+    const { posData, widthData, posTexture, widthTexture } = roadDataParams;
+    const count = Math.min(roadSegments.length, MAX_ROADS);
 
-    // Uniform 업데이트 (Vector4 배열로 변환하는 복잡한 과정 대신 Float32Array 직접 주입 가능)
-    // Three.js ShaderMaterial은 배열 Uniform에 대해 Float32Array를 지원하지 않을 수 있으므로
-    // 기존처럼 Vector4 배열로 변환하거나, raw shader data를 직접 넣어야 함.
-    // 가장 안전한 방법은 기존 로직(Vector4) 유지 + Widths(Float array) 추가입니다.
-    
-    // 1. 위치 데이터 (기존 방식 유지 - Vector4 Array)
-    const segmentVec4s = materialRef.current.uniforms.uRoadSegments.value;
-    for(let i=0; i<150; i++) {
-        if(i < roadSegments.length) {
-            segmentVec4s[i].set(positions[i*4], positions[i*4+1], positions[i*4+2], positions[i*4+3]);
-        } else {
-            segmentVec4s[i].set(0,0,0,0);
-        }
+    // 데이터 채우기
+    for (let i = 0; i < count; i++) {
+      const seg = roadSegments[i];
+      posData[i * 4] = seg.x1;
+      posData[i * 4 + 1] = seg.z1;
+      posData[i * 4 + 2] = seg.x2;
+      posData[i * 4 + 3] = seg.z2;
+
+      // widths 텍스처는 RedFormat (1채널)
+      widthData[i] = seg.width;
     }
-    
-    // 2. [추가] 두께 데이터 (Float Array는 직접 할당 가능)
-    materialRef.current.uniforms.uRoadWidths.value = widths;
-    
-    materialRef.current.uniforms.uRoadSegmentCount.value = Math.min(roadSegments.length, 150);
-  }, [roadSegments]);
+
+    // 텍스처 업데이트 플래그 설정
+    posTexture.needsUpdate = true;
+    widthTexture.needsUpdate = true;
+
+    materialRef.current.uniforms.uRoadSegmentCount.value = count;
+  }, [roadSegments, roadDataParams]);
 
   // 렌더링 직전에 카메라 행렬 동기화
   useFrame(() => {
@@ -344,11 +421,11 @@ export function InfiniteBackground({
     tempMatrix
       .copy(camera.projectionMatrix)
       .multiply(camera.matrixWorldInverse);
-    
+
     // 행렬이 유효한지 확인 (determinant가 0이 아닌지)
     const det = tempMatrix.determinant();
     if (Math.abs(det) < 1e-10) return;
-    
+
     // InverseViewProjection 계산
     materialRef.current.uniforms.uInverseViewProj.value
       .copy(tempMatrix)
@@ -359,7 +436,7 @@ export function InfiniteBackground({
     const obliqueMatrix = calculateObliqueMatrix(projectionParams, panOffset);
     tempObliqueMatrix.copy(obliqueMatrix).invert();
     materialRef.current.uniforms.uInverseOblique.value.copy(tempObliqueMatrix);
-  }); 
+  });
 
   return (
     <mesh frustumCulled={false} renderOrder={-100}>
