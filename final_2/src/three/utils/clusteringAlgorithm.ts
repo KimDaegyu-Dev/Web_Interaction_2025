@@ -670,6 +670,7 @@ export function calculateRoadNetwork(buildings: PlacedObject[]): RoadNetwork {
   }
 
   // === Phase 3: Small Roads (Intra-Cluster) ===
+  // === Phase 3: Small Roads (Intra-Cluster) ===
   const allSegments = new Map<string, RoadSegment>();
 
   // 3.1 공유 엣지 (골목길) 생성
@@ -678,12 +679,13 @@ export function calculateRoadNetwork(buildings: PlacedObject[]): RoadNetwork {
     allSegments.set(getSegmentKey(edge), edge);
   }
 
-  // 3.2 클러스터 내 고립 건물 연결
-  // Union-Find로 물리적 연결 추적
+  // [중요] 여기서 connectivityUf를 초기화해야 합니다!
+  // 건물 인덱스(0, 1, 2...)를 ID로 사용하는 Union-Find 생성
   const buildingIds = buildingCells.map((_, i) => i);
   const connectivityUf = new UnionFind(buildingIds);
 
-  // 인접 건물들을 연결로 표시
+  // [중요] 이미 붙어있는 건물들(공유 엣지)을 Union-Find에 미리 반영
+  // 이걸 안 하면 이미 붙어있는 건물끼리 또 도로를 놓으려고 시도하게 됩니다.
   for (let i = 0; i < buildingCells.length; i++) {
     const cell = buildingCells[i];
     const adjacentDirs = [
@@ -694,16 +696,18 @@ export function calculateRoadNetwork(buildings: PlacedObject[]): RoadNetwork {
     ];
 
     for (const dir of adjacentDirs) {
+      // 인접한 칸에 다른 건물이 있는지 확인
       const neighborIdx = buildingCells.findIndex(
         (c) => c.x === cell.x + dir.dx && c.z === cell.z + dir.dz
       );
       if (neighborIdx !== -1) {
+        // 물리적으로 붙어있으면 논리적으로도 연결 처리
         connectivityUf.union(i, neighborIdx);
       }
     }
   }
 
-  // 클러스터 내 연결되지 않은 건물들을 MST로 연결
+  // 3.2 클러스터 내 고립 건물 연결 (MST + 진입로 추가)
   clusterGroups.forEach((groupNodes) => {
     if (groupNodes.length < 2) return;
 
@@ -715,6 +719,7 @@ export function calculateRoadNetwork(buildings: PlacedObject[]): RoadNetwork {
         const nodeI = groupNodes[i];
         const nodeJ = groupNodes[j];
 
+        // 이미 연결된 상태면 엣지 추가 안 함
         if (connectivityUf.connected(nodeI.index, nodeJ.index)) continue;
         if (!nodeI.accessPoint || !nodeJ.accessPoint) continue;
 
@@ -734,6 +739,7 @@ export function calculateRoadNetwork(buildings: PlacedObject[]): RoadNetwork {
 
       connectivityUf.union(nodeU.index, nodeV.index);
 
+      // 1. A* 경로 생성
       const path = findPathAStar(
         nodeU.accessPoint,
         nodeV.accessPoint,
@@ -744,6 +750,70 @@ export function calculateRoadNetwork(buildings: PlacedObject[]): RoadNetwork {
 
       for (const seg of path) {
         allSegments.set(getSegmentKey(seg), seg);
+      }
+
+      // 2. 진입로(Entrance) 세그먼트 추가 (끊김 현상 해결 로직)
+      const endpoints = [nodeU, nodeV];
+
+      for (const node of endpoints) {
+        if (!node.accessPoint) continue;
+
+        const dx = node.cell.x - node.accessPoint.x;
+        const dz = node.cell.z - node.accessPoint.z;
+
+        const p1 = gridIndexToWorldEdge(node.accessPoint.x, node.accessPoint.z);
+        const cellSize = GRID_CONFIG.CELL_SIZE;
+
+        let connector: RoadSegment | null = null;
+
+        // 건물이 동쪽
+        if (dx === 1 && dz === 0) {
+          connector = {
+            x1: p1.x,
+            z1: p1.z,
+            x2: p1.x + cellSize,
+            z2: p1.z,
+            type: "small",
+            width: ALGORITHM_CONFIG.SMALL_ROAD_WIDTH,
+          };
+        }
+        // 건물이 서쪽
+        else if (dx === -1 && dz === 0) {
+          connector = {
+            x1: p1.x,
+            z1: p1.z,
+            x2: p1.x - cellSize,
+            z2: p1.z,
+            type: "small",
+            width: ALGORITHM_CONFIG.SMALL_ROAD_WIDTH,
+          };
+        }
+        // 건물이 남쪽
+        else if (dx === 0 && dz === 1) {
+          connector = {
+            x1: p1.x,
+            z1: p1.z,
+            x2: p1.x,
+            z2: p1.z + cellSize,
+            type: "small",
+            width: ALGORITHM_CONFIG.SMALL_ROAD_WIDTH,
+          };
+        }
+        // 건물이 북쪽
+        else if (dx === 0 && dz === -1) {
+          connector = {
+            x1: p1.x,
+            z1: p1.z,
+            x2: p1.x,
+            z2: p1.z - cellSize,
+            type: "small",
+            width: ALGORITHM_CONFIG.SMALL_ROAD_WIDTH,
+          };
+        }
+
+        if (connector) {
+          allSegments.set(getSegmentKey(connector), connector);
+        }
       }
     }
   });
