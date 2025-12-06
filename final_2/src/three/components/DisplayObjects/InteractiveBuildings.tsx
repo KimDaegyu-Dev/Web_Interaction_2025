@@ -21,6 +21,7 @@ export function InteractiveBuildings({ buildings }: InteractiveBuildingsProps) {
           meshIndex={building.meshIndex}
           buildingStructure={building.buildingStructure}
           buildingText={building.buildingText}
+          title={building.title}
         />
       ))}
     </>

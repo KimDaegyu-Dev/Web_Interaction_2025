@@ -190,3 +190,92 @@ export function getBoundingBoxSize(bbox: BoundingBox): THREE.Vector3 {
     bbox.maxZ - bbox.minZ
   );
 }
+
+/**
+ * 박스의 특정 면에 대한 AABB 계산
+ * 투영 방향에 따라 해당 면의 AABB를 반환
+ */
+export function calculateBoxFaceAABB(
+  box: BuildingStructureBox,
+  projectionDirection: "x" | "-x" | "y" | "-y" | "z" | "-z"
+): BoundingBox {
+  const [px, py, pz] = box.position;
+  const [sx, sy, sz] = box.scale;
+
+  const hw = sx / 2;
+  const hh = sy / 2;
+  const hd = sz / 2;
+
+  switch (projectionDirection) {
+    case "x":
+      // +X 방향 면 (오른쪽 면)
+      return {
+        minX: px + hw - EPSILON,
+        maxX: px + hw + EPSILON,
+        minY: py - hh,
+        maxY: py + hh,
+        minZ: pz - hd,
+        maxZ: pz + hd,
+      };
+    case "-x":
+      // -X 방향 면 (왼쪽 면)
+      return {
+        minX: px - hw - EPSILON,
+        maxX: px - hw + EPSILON,
+        minY: py - hh,
+        maxY: py + hh,
+        minZ: pz - hd,
+        maxZ: pz + hd,
+      };
+    case "y":
+      // +Y 방향 면 (위쪽 면)
+      return {
+        minX: px - hw,
+        maxX: px + hw,
+        minY: py + hh - EPSILON,
+        maxY: py + hh + EPSILON,
+        minZ: pz - hd,
+        maxZ: pz + hd,
+      };
+    case "-y":
+      // -Y 방향 면 (아래쪽 면)
+      return {
+        minX: px - hw,
+        maxX: px + hw,
+        minY: py - hh - EPSILON,
+        maxY: py - hh + EPSILON,
+        minZ: pz - hd,
+        maxZ: pz + hd,
+      };
+    case "z":
+      // +Z 방향 면 (앞쪽 면)
+      return {
+        minX: px - hw,
+        maxX: px + hw,
+        minY: py - hh,
+        maxY: py + hh,
+        minZ: pz + hd - EPSILON,
+        maxZ: pz + hd + EPSILON,
+      };
+    case "-z":
+      // -Z 방향 면 (뒤쪽 면)
+      return {
+        minX: px - hw,
+        maxX: px + hw,
+        minY: py - hh,
+        maxY: py + hh,
+        minZ: pz - hd - EPSILON,
+        maxZ: pz - hd + EPSILON,
+      };
+  }
+}
+
+/**
+ * 건물 구조의 각 박스에 대한 면별 AABB 배열 계산
+ */
+export function calculateBoxFaceAABBs(
+  structure: BuildingStructureBox[],
+  projectionDirection: "x" | "-x" | "y" | "-y" | "z" | "-z"
+): BoundingBox[] {
+  return structure.map((box) => calculateBoxFaceAABB(box, projectionDirection));
+}

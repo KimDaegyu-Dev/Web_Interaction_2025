@@ -28,7 +28,7 @@ export interface VerticalTextTextureOptions {
 
 /**
  * 세로쓰기 텍스트 텍스처 생성
- * 
+ *
  * 오른쪽 위에서 시작하여 아래로 글자를 배치하고,
  * 줄바꿈 시 왼쪽으로 열을 이동합니다 (전통적인 세로쓰기 방식).
  */
@@ -126,10 +126,10 @@ export interface TextTextureOptions {
 }
 
 /**
- * 일반 텍스트 텍스처 생성 (가로쓰기)
+ * 일반 텍스트 텍스처 생성 (가로쓰기, 줄바꿈 지원)
  */
 export function createTextTexture(
-  options: TextTextureOptions
+  options: TextTextureOptions & { maxWidth?: number }
 ): THREE.CanvasTexture {
   const {
     text,
@@ -140,6 +140,7 @@ export function createTextTexture(
     fontFamily = "sans-serif",
     fontWeight = "bold",
     textAlign = "center",
+    maxWidth,
   } = options;
 
   const canvas = document.createElement("canvas");
@@ -162,11 +163,47 @@ export function createTextTexture(
   ctx.fillStyle = color;
   ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
   ctx.textAlign = textAlign;
-  ctx.textBaseline = "middle";
+  ctx.textBaseline = "top";
 
-  // 텍스트 렌더링
-  const x = textAlign === "center" ? canvasWidth / 2 : textAlign === "left" ? 20 : canvasWidth - 20;
-  ctx.fillText(text, x, canvasHeight / 2);
+  // 줄바꿈 처리
+  const lineHeight = fontSize * 1.2;
+  const padding = 20;
+  const availableWidth = maxWidth
+    ? maxWidth - padding * 2
+    : canvasWidth - padding * 2;
+
+  const words = text.split("");
+  const lines: string[] = [];
+  let currentLine = "";
+
+  words.forEach((char) => {
+    const testLine = currentLine + char;
+    const metrics = ctx.measureText(testLine);
+
+    if (metrics.width > availableWidth && currentLine !== "") {
+      lines.push(currentLine);
+      currentLine = char;
+    } else {
+      currentLine = testLine;
+    }
+  });
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  // 텍스트 렌더링 (여러 줄)
+  const startY = padding;
+  lines.forEach((line, index) => {
+    const y = startY + index * lineHeight;
+    const x =
+      textAlign === "center"
+        ? canvasWidth / 2
+        : textAlign === "left"
+        ? padding
+        : canvasWidth - padding;
+    ctx.fillText(line, x, y);
+  });
 
   // 텍스처 생성
   const texture = new THREE.CanvasTexture(canvas);
@@ -185,7 +222,7 @@ export async function loadProjectionTexture(
   url: string
 ): Promise<THREE.Texture> {
   const loader = new THREE.TextureLoader();
-  
+
   return new Promise((resolve, reject) => {
     loader.load(
       url,
