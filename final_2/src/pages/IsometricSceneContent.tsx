@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { IsometricCamera } from "@/three/cameras/IsometricCamera";
@@ -6,6 +6,7 @@ import { Lights } from "@/three/lights/Lights";
 import { InfiniteBackground } from "@/three/components/Grid/InfiniteBackground";
 import { InteractiveBuildings } from "@/three/components/DisplayObjects";
 import { RealtimeCursors } from "@/three/components/RealtimeCursors";
+import { RoadMeshRenderer } from "@/three/components/Road/RoadMeshRenderer";
 import { useMouseControls } from "@/three/hooks/useMouseControls";
 import { useObliqueProjection } from "@/three/hooks/useObliqueProjection";
 import { useGridRaycasting } from "@/three/hooks/useGridRaycasting";
@@ -32,7 +33,8 @@ interface IsometricSceneContentProps {
     top: boolean;
     bottom: boolean;
   }) => void;
-  isDarkMode: boolean; // Added prop
+  isDarkMode: boolean;
+  enableGradients?: boolean; // 그라데이션 토글
 }
 
 /**
@@ -54,7 +56,8 @@ export function IsometricSceneContent({
   onBuildingNavigate,
   updateCursor,
   onEdgeZoneChange,
-  isDarkMode, // Added prop destructuring
+  isDarkMode,
+  enableGradients = true, // 기본값: 활성화
 }: IsometricSceneContentProps) {
   const sceneGroupRef = useRef<THREE.Group>(null);
 
@@ -99,6 +102,13 @@ export function IsometricSceneContent({
     onEdgeZoneChange(edgeZone);
   });
 
+  // 도로 세그먼트 수 로깅
+  // useEffect(() => {
+  //   if (roadSegments.length > 0) {
+  //     console.log(`[RoadSegments] Total: ${roadSegments.length} segments`);
+  //   }
+  // }, [roadSegments.length]);
+
   return (
     <>
       {/* 카메라 */}
@@ -111,6 +121,13 @@ export function IsometricSceneContent({
       <group ref={sceneGroupRef}>
         {/* 건물들 */}
         <InteractiveBuildings buildings={placedObjects} />
+
+        {/* 도로 (3D 메시로 렌더링 - GPU 자동 최적화) */}
+        <RoadMeshRenderer
+          roadSegments={roadSegments}
+          isDarkMode={isDarkMode}
+          maxSegments={500} // 성능 제한
+        />
 
         {/* 실시간 커서 (내 커서 + 다른 사용자 커서) */}
         <RealtimeCursors cursors={cursors} myCursor={myCursor} />
@@ -131,6 +148,7 @@ export function IsometricSceneContent({
         projectionParams={projectionParams}
         getPanOffset={getPanOffset}
         isDarkMode={isDarkMode}
+        enableGradients={enableGradients}
       />
     </>
   );

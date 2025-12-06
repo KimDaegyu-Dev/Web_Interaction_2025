@@ -4,6 +4,10 @@ import * as THREE from "three";
 import gsap from "gsap";
 import { GRID_CONFIG } from "../../config/grid";
 import { calculateObliqueMatrix } from "../../utils/projection";
+import {
+  generateGradientTexture,
+  calculateWorldBounds,
+} from "../../utils/gradientTextureGenerator";
 import type {
   CursorPosition,
   PlacedObject,
@@ -47,6 +51,15 @@ uniform int uRoadSegmentCount;
 uniform float uInfluenceRadius;
 uniform float uRoadWidth;
 uniform vec3 uRoadColor; // Not used directly anymore, hardcoded per mode
+uniform vec3 uCameraPosition; // Camera position for LOD
+uniform float uRoadLODDistance; // LOD distance threshold
+uniform float uEnableGradients; // 0.0 = disabled, 1.0 = enabled
+uniform float uQuality; // 품질 배율 (0.75 = 낮음, 0.9 = 중간, 1.0 = 높음)
+
+// 건물 그라데이션 텍스처 (미리 계산됨)
+uniform sampler2D uBuildingGradientTexture;
+uniform vec4 uGradientTextureBounds; // minX, maxX, minZ, maxZ
+uniform float uGradientTextureSize;
 
 varying vec2 vUv;
 
@@ -141,36 +154,59 @@ void main() {
   vec3 finalGradient = baseColor;
   float minDistToLight = 1000.0;
   
-  // 커서
-  for (int i = 0; i < 50; i++) {
-    if (i >= uCursorCount) break;
-    vec2 cursorPos = uCursorPositions[i].xz;
-    float distToCursor = length(worldPos - cursorPos);
-    minDistToLight = min(minDistToLight, distToCursor);
-    if (distToCursor < uInfluenceRadius) {
+  // 원형 그라데이션 (toggle 가능)
+  if (uEnableGradients > 0.5) {
+    // 1. 건물 그라데이션: 텍스처에서 샘플링 (미리 계산됨)
+    vec2 gradientUv = vec2(
+      (worldPos.x - uGradientTextureBounds.x) / (uGradientTextureBounds.y - uGradientTextureBounds.x),
+      (worldPos.y - uGradientTextureBounds.z) / (uGradientTextureBounds.w - uGradientTextureBounds.z)
+    );
+    
+    // 텍스처 범위 내에 있으면 샘플링
+    if (gradientUv.x >= 0.0 && gradientUv.x <= 1.0 && gradientUv.y >= 0.0 && gradientUv.y <= 1.0) {
+      vec4 buildingGradient = texture2D(uBuildingGradientTexture, gradientUv);
+      finalGradient = mix(finalGradient, buildingGradient.rgb, buildingGradient.a);
+      
+      // minDistToLight 근사: 텍스처 알파값으로 거리 추정 (루프 제거로 성능 향상)
+      // 알파값이 높을수록 건물에 가까움 → 거리가 짧음
+      float estimatedDist = (1.0 - buildingGradient.a) * 100.0;
+      minDistToLight = min(minDistToLight, estimatedDist);
+    }
+    
+    // 2. 커서 그라데이션: 실시간 계산 (커서는 움직이므로)
+    // 최적화: 제곱 거리로 먼저 체크하여 sqrt 계산 최소화
+    float influenceRadiusSq = uInfluenceRadius * uInfluenceRadius;
+    for (int i = 0; i < 50; i++) {
+      if (i >= uCursorCount) break;
+      vec2 cursorPos = uCursorPositions[i].xz;
+      vec2 diff = worldPos - cursorPos;
+      float distSq = dot(diff, diff);
+      
+      // Early exit: 영향 반경 밖이면 스킵 (sqrt 없이 체크)
+      if (distSq >= influenceRadiusSq) {
+        // minDistToLight 업데이트를 위해 sqrt 계산 (하지만 루프는 종료)
+        float distToCursor = sqrt(distSq);
+        minDistToLight = min(minDistToLight, distToCursor);
+        continue;
+      }
+      
+      // 영향 반경 내에 있으면 정확한 거리 계산 및 그라데이션 적용
+      float distToCursor = sqrt(distSq);
+      minDistToLight = min(minDistToLight, distToCursor);
+      
       vec4 gradient = getGradientColor(worldPos, cursorPos, uInfluenceRadius, 1.0);
       finalGradient = mix(finalGradient, gradient.rgb, gradient.a * 0.6);
-    }
-  }
-  
-  // 건물 주변 Glow (마스킹 대신 분위기만 유지)
-  for (int i = 0; i < 50; i++) {
-    if (i >= uBuildingCount) break;
-    vec2 buildingPos = uBuildingPositions[i].xz;
-    float distToBuilding = length(worldPos - buildingPos);
-    minDistToLight = min(minDistToLight, distToBuilding);
-    if (distToBuilding < uInfluenceRadius) {
-      float weight = uBuildingPositions[i].y;
-      vec4 gradient = getGradientColor(worldPos, buildingPos, uInfluenceRadius, weight);
-      finalGradient = mix(finalGradient, gradient.rgb, gradient.a * 0.4);
     }
   }
   
   finalGradient = clamp(finalGradient, vec3(0.0), vec3(1.0));
   
   // --- 2. 그리드 렌더링 (핵심 변경: 1x1 스케일) ---
+  // 품질에 따라 거리 페이드 범위 조절 (낮은 품질일수록 더 가까운 거리만 렌더링)
+  float fadeStart = 5.0 * uQuality;
+  float fadeEnd = 50.0 * uQuality;
   float grid = 0.0;
-  float distFade = 1.0 - smoothstep(5.0, 50.0, minDistToLight);
+  float distFade = 1.0 - smoothstep(fadeStart, fadeEnd, minDistToLight);
   
   if (distFade > 0.01) {
     vec2 gridUv = worldPos / uGridSize; 
@@ -184,30 +220,8 @@ void main() {
   vec3 finalColor = finalGradient + gridColor * grid;
   
   // --- 3. 도로 렌더링 ---
-  float roadIntensity = 0.0;
-
-  // 64x64 = 4096 Loop
-  for (int i = 0; i < 4096; i++) {
-    if (i >= uRoadSegmentCount) break;
-    
-    // 1D Index -> 2D UV
-    float size = 64.0;
-    vec2 uv = vec2(mod(float(i), size), floor(float(i) / size)) / size;
-    uv += vec2(0.5 / size); // Pixel center offset
-
-    vec4 segment = texture2D(uRoadPositionTexture, uv);
-    float w = texture2D(uRoadWidthTexture, uv).r;
-    float currentWidth = uRoadWidth * w;
-    
-    roadIntensity = max(roadIntensity, roadSegmentLine(worldPos, segment, currentWidth));
-  }
-  
-  // 도로는 그리드 위에 진하게 덮어씁니다.
-  vec3 lightRoad = vec3(0.2, 0.2, 0.25);
-  vec3 darkRoad = vec3(1.0, 1.0, 1.0);
-  vec3 posterRoadColor = mix(lightRoad, darkRoad, uIsDarkMode);
-
-  finalColor = mix(finalColor, posterRoadColor, roadIntensity);
+  // 도로는 이제 별도의 3D 메시로 렌더링되므로 shader에서 제거
+  // 이렇게 하면 GPU가 자동으로 frustum culling과 LOD를 처리
   
   gl_FragColor = vec4(finalColor, 1.0);
 }
@@ -221,6 +235,7 @@ interface InfiniteBackgroundProps {
   projectionParams: ProjectionParams;
   getPanOffset: () => THREE.Vector3;
   isDarkMode?: boolean;
+  enableGradients?: boolean; // 그라데이션 토글
 }
 
 /**
@@ -235,9 +250,12 @@ export function InfiniteBackground({
   projectionParams,
   getPanOffset,
   isDarkMode = true,
+  enableGradients = true,
 }: InfiniteBackgroundProps) {
-  const { camera, gl, clock } = useThree();
+  const { camera, clock } = useThree();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+
+  // 적응형 품질 시스템: FPS에 따라 품질 자동 조절
 
   const uniforms = useMemo(
     () => ({
@@ -261,6 +279,13 @@ export function InfiniteBackground({
       uInfluenceRadius: { value: GRID_CONFIG.CURSOR_INFLUENCE_RADIUS },
       uRoadWidth: { value: GRID_CONFIG.ROAD.WIDTH },
       uRoadColor: { value: new THREE.Color(GRID_CONFIG.ROAD.COLOR) },
+      uCameraPosition: { value: new THREE.Vector3() },
+      uRoadLODDistance: { value: 80.0 }, // 카메라로부터 80 유닛 이내만 도로 렌더링
+      uEnableGradients: { value: 1.0 }, // 그라데이션 활성화 (기본값: 활성화)
+      uBuildingGradientTexture: { value: null },
+      uGradientTextureBounds: { value: new THREE.Vector4(0, 0, 0, 0) }, // minX, maxX, minZ, maxZ
+      uGradientTextureSize: { value: 512.0 },
+      uQuality: { value: 1.0 }, // 품질 배율
     }),
     []
   );
@@ -276,8 +301,112 @@ export function InfiniteBackground({
     }
   }, [isDarkMode]);
 
+  useEffect(() => {
+    if (materialRef.current) {
+      // Smooth transition for enableGradients
+      gsap.to(materialRef.current.uniforms.uEnableGradients, {
+        value: enableGradients ? 1.0 : 0.0,
+        duration: 0.3,
+        ease: "power2.inOut",
+      });
+    }
+  }, [enableGradients]);
+
   const tempMatrix = useMemo(() => new THREE.Matrix4(), []);
   const tempObliqueMatrix = useMemo(() => new THREE.Matrix4(), []);
+
+  // 건물 그라데이션 텍스처 생성 (건물이 변경될 때만 재계산)
+  const gradientTextureRef = useRef<THREE.DataTexture | null>(null);
+  const worldBoundsRef = useRef<{
+    minX: number;
+    maxX: number;
+    minZ: number;
+    maxZ: number;
+  } | null>(null);
+
+  // 동적 텍스처 해상도 계산: 건물 수와 월드 크기에 따라 조절
+  const textureSize = useMemo(() => {
+    if (buildings.length === 0) return 256;
+
+    const bounds = calculateWorldBounds(buildings, 0); // 패딩 없이 크기만 계산
+    const worldWidth = bounds.maxX - bounds.minX;
+    const worldDepth = bounds.maxZ - bounds.minZ;
+    const worldSize = Math.max(worldWidth, worldDepth);
+
+    // 건물 수 기준 해상도
+    let sizeByCount = 256;
+    if (buildings.length >= 50) {
+      sizeByCount = 1024;
+    } else if (buildings.length >= 10) {
+      sizeByCount = 512;
+    }
+
+    // 월드 크기 기준 해상도
+    let sizeByWorld = 256;
+    if (worldSize >= 300) {
+      sizeByWorld = 1024;
+    } else if (worldSize >= 100) {
+      sizeByWorld = 512;
+    }
+
+    // 두 기준 중 큰 값 사용
+    return Math.max(sizeByCount, sizeByWorld);
+  }, [buildings]);
+
+  // 품질 배율을 적용한 최종 텍스처 해상도
+  const finalTextureSize = useMemo(() => {
+    return Math.round(textureSize * 1.0);
+  }, [textureSize]);
+
+  useEffect(() => {
+    if (!materialRef.current || buildings.length === 0) {
+      // 건물이 없으면 텍스처 제거
+      if (gradientTextureRef.current) {
+        gradientTextureRef.current.dispose();
+        gradientTextureRef.current = null;
+      }
+      if (materialRef.current) {
+        materialRef.current.uniforms.uBuildingGradientTexture.value = null;
+      }
+      return;
+    }
+
+    // 월드 바운드 계산
+    const bounds = calculateWorldBounds(buildings, 100); // 100 유닛 패딩
+    worldBoundsRef.current = bounds;
+
+    // 그라데이션 텍스처 생성 (비동기로 처리하여 메인 스레드 블로킹 방지)
+
+    // 기존 텍스처 정리
+    if (gradientTextureRef.current) {
+      gradientTextureRef.current.dispose();
+    }
+
+    // Web Worker나 requestIdleCallback을 사용할 수도 있지만,
+    // 일단 동기적으로 생성 (건물이 많지 않으면 괜찮음)
+    const texture = generateGradientTexture(
+      buildings,
+      finalTextureSize,
+      bounds,
+      GRID_CONFIG.CURSOR_INFLUENCE_RADIUS,
+      isDarkMode
+    );
+
+    gradientTextureRef.current = texture;
+
+    // Uniform 업데이트
+    if (materialRef.current) {
+      materialRef.current.uniforms.uBuildingGradientTexture.value = texture;
+      materialRef.current.uniforms.uGradientTextureBounds.value.set(
+        bounds.minX,
+        bounds.maxX,
+        bounds.minZ,
+        bounds.maxZ
+      );
+      materialRef.current.uniforms.uGradientTextureSize.value =
+        finalTextureSize;
+    }
+  }, [buildings, isDarkMode, finalTextureSize]); // 건물이 변경되거나 다크모드가 변경될 때만 재계산
 
   // 텍스처 초기화 (64x64 = 4096개 도로 지원)
   const TEXTURE_SIZE = 64;
@@ -443,6 +572,12 @@ export function InfiniteBackground({
     if (!materialRef.current) return;
 
     materialRef.current.uniforms.uTime.value = clock.getElapsedTime();
+
+    // 카메라 위치 업데이트 (LOD용)
+    materialRef.current.uniforms.uCameraPosition.value.copy(camera.position);
+
+    // 품질 배율 업데이트 (적응형 품질 시스템)
+    materialRef.current.uniforms.uQuality.value = 2.0;
 
     // 카메라 행렬이 유효한지 확인
     if (!camera.projectionMatrix || !camera.matrixWorldInverse) return;

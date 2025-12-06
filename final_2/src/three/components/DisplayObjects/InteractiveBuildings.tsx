@@ -10,9 +10,7 @@ interface InteractiveBuildingsProps {
  * 모든 배치된 건물을 렌더링
  * 클릭 이벤트는 바닥 mesh에서 통합 처리 (hoveredPosition 기반)
  */
-export function InteractiveBuildings({
-  buildings,
-}: InteractiveBuildingsProps) {
+export function InteractiveBuildings({ buildings }: InteractiveBuildingsProps) {
   return (
     <>
       {buildings.map((building) => (
