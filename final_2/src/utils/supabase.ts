@@ -31,10 +31,9 @@ export interface BuildingData {
   building_structure?: BuildingStructureBox[] | null;
   building_text?: string | null;
   title?: string | null;
-  author?: string | null;
   message1?: string | null;
   message2?: string | null;
-  password: string;
+  user_id: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -48,10 +47,9 @@ export interface InsertBuildingData {
   building_structure?: BuildingStructureBox[] | null;
   building_text?: string | null;
   title?: string | null;
-  author?: string | null;
   message1?: string | null;
   message2?: string | null;
-  password: string;
+  user_id: string;
 }
 
 // ============================================
@@ -62,7 +60,7 @@ export interface WreathData {
   id: string;
   building_id: string;
   message?: string | null;
-  sender?: string | null;
+  user_id: string;
   final_position_x?: number | null;
   final_position_y?: number | null;
   final_position_z?: number | null;
@@ -73,7 +71,7 @@ export interface WreathData {
 export interface InsertWreathData {
   building_id: string;
   message?: string | null;
-  sender?: string | null;
+  user_id: string;
   final_position_x?: number | null;
   final_position_y?: number | null;
   final_position_z?: number | null;
