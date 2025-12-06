@@ -2,7 +2,13 @@
  * RxJS 기반 카메라 액션 레이어
  * 마우스 이벤트 스트림을 구독하여 카메라 상태(panOffset, zoom)를 업데이트
  */
-import { Subject, BehaviorSubject, Observable, Subscription, merge } from "rxjs";
+import {
+  Subject,
+  BehaviorSubject,
+  Observable,
+  Subscription,
+  merge,
+} from "rxjs";
 import {
   filter,
   withLatestFrom,
@@ -10,7 +16,11 @@ import {
   takeUntil,
 } from "rxjs/operators";
 import * as THREE from "three";
-import { MouseEventStreams, type EdgeZone, type MousePosition } from "./mouseEvents";
+import {
+  MouseEventStreams,
+  type EdgeZone,
+  type MousePosition,
+} from "./mouseEvents";
 
 // ============================================================
 // 상태 타입 정의
@@ -32,7 +42,7 @@ export interface CameraConfig {
 }
 
 const DEFAULT_CONFIG: CameraConfig = {
-  panSpeed: 0.5,
+  panSpeed: 0.9,
   zoomSpeed: 0.05,
   minZoom: 0.01, // 최대 줌인
   maxZoom: 0.2, // 최대 줌아웃
@@ -69,7 +79,9 @@ export class CameraActions {
   private camera: THREE.Camera | null = null;
 
   // 상태 변경 디바운스 콜백
-  private onStateChange: ((state: { x: number; y: number; zoom: number }) => void) | null = null;
+  private onStateChange:
+    | ((state: { x: number; y: number; zoom: number }) => void)
+    | null = null;
   private stateChange$ = new Subject<{ x: number; y: number; zoom: number }>();
 
   constructor(
@@ -117,11 +129,9 @@ export class CameraActions {
     // 드래그 종료 (마우스 업 또는 마우스 떠남)
     const dragEnd$ = merge(this.mouseEvents.up$, this.mouseEvents.leave$);
 
-    const dragEndSub = dragEnd$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        this.isDragging$.next(false);
-      });
+    const dragEndSub = dragEnd$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.isDragging$.next(false);
+    });
 
     this.subscriptions.push(dragEndSub);
 
@@ -265,7 +275,10 @@ export class CameraActions {
         // 강도 계산
         let intensity = 0;
         if (edgeZone.left) {
-          intensity = Math.max(intensity, (edgeThresholdX - x) / edgeThresholdX);
+          intensity = Math.max(
+            intensity,
+            (edgeThresholdX - x) / edgeThresholdX
+          );
         }
         if (edgeZone.right) {
           intensity = Math.max(
@@ -274,7 +287,10 @@ export class CameraActions {
           );
         }
         if (edgeZone.top) {
-          intensity = Math.max(intensity, (edgeThresholdY - y) / edgeThresholdY);
+          intensity = Math.max(
+            intensity,
+            (edgeThresholdY - y) / edgeThresholdY
+          );
         }
         if (edgeZone.bottom) {
           intensity = Math.max(
@@ -299,7 +315,7 @@ export class CameraActions {
         // - 마우스가 아래쪽 가장자리에 있으면 → 씬이 위로 이동 (panOffset.y 증가)
         const speed = edgePanSpeed * intensity;
         const currentOffset = this.panOffset$.value.clone();
-        
+
         // final과 동일한 방향 벡터 적용
         currentOffset.x -= directionX * speed;
         currentOffset.y += directionY * speed;
