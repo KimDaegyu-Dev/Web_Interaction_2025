@@ -7,6 +7,7 @@ import {
 } from "@/utils/supabase";
 import { getBuildingStructure } from "../config/buildingPresets";
 import { GRID_CONFIG } from "../config/grid";
+import { useAuthStore } from "@/stores/authStore";
 
 /**
  * DB 좌표(정수형, 셀 좌하단 기준)를 렌더링 좌표(셀 중앙)로 변환
@@ -28,9 +29,9 @@ export interface Building {
   buildingStructure?: BuildingStructureBox[] | null;
   buildingText?: string | null;
   title?: string | null;
-  author?: string | null;
   message1?: string | null;
   message2?: string | null;
+  userId: string;
 }
 
 /**
@@ -74,9 +75,9 @@ export function useBuildingPersistence() {
             buildingStructure: building.building_structure || getBuildingStructure(building.mesh_index),
             buildingText: building.building_text,
             title: building.title,
-            author: building.author,
             message1: building.message1,
             message2: building.message2,
+            userId: building.user_id,
           }));
           setBuildings(loadedBuildings);
         }
@@ -125,9 +126,9 @@ export function useBuildingPersistence() {
                   buildingStructure: newBuilding.building_structure || getBuildingStructure(newBuilding.mesh_index),
                   buildingText: newBuilding.building_text,
                   title: newBuilding.title,
-                  author: newBuilding.author,
                   message1: newBuilding.message1,
                   message2: newBuilding.message2,
+                  userId: newBuilding.user_id,
                 },
               ];
             });
@@ -140,7 +141,6 @@ export function useBuildingPersistence() {
                       ...b,
                       buildingText: updated.building_text,
                       title: updated.title,
-                      author: updated.author,
                       message1: updated.message1,
                       message2: updated.message2,
                     }
@@ -165,17 +165,22 @@ export function useBuildingPersistence() {
   // 건물 생성
   const createBuilding = useCallback(
     async (
-      data: Omit<InsertBuildingData, "password" | "building_structure">,
-      password: string,
+      data: Omit<InsertBuildingData, "user_id" | "building_structure">,
       meshIndex: number
     ): Promise<BuildingData | null> => {
+      const user = useAuthStore.getState().user;
+      if (!user) {
+        console.error("User not authenticated");
+        return null;
+      }
+
       try {
         const buildingStructure = getBuildingStructure(meshIndex);
         
         const insertData: InsertBuildingData = {
           ...data,
           building_structure: buildingStructure,
-          password,
+          user_id: user.id,
         };
 
         const { data: result, error } = await supabase
@@ -200,20 +205,8 @@ export function useBuildingPersistence() {
 
   // 건물 삭제
   const deleteBuilding = useCallback(
-    async (id: string, password: string): Promise<boolean> => {
+    async (id: string): Promise<boolean> => {
       try {
-        // 패스워드 확인
-        const { data: existing } = await supabase
-          .from("buildings")
-          .select("password")
-          .eq("id", id)
-          .single();
-
-        if (!existing || existing.password !== password) {
-          console.error("Password mismatch");
-          return false;
-        }
-
         const { error } = await supabase.from("buildings").delete().eq("id", id);
 
         if (error) {
@@ -234,21 +227,9 @@ export function useBuildingPersistence() {
   const updateBuilding = useCallback(
     async (
       id: string,
-      updates: Partial<InsertBuildingData>,
-      password: string
+      updates: Partial<InsertBuildingData>
     ): Promise<boolean> => {
       try {
-        const { data: existing } = await supabase
-          .from("buildings")
-          .select("password")
-          .eq("id", id)
-          .single();
-
-        if (!existing || existing.password !== password) {
-          console.error("Password mismatch");
-          return false;
-        }
-
         const { error } = await supabase
           .from("buildings")
           .update(updates)

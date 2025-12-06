@@ -1,6 +1,10 @@
 import { useCallback, useState, useEffect, useMemo } from "react";
-import { useBuildingPersistence, type Building } from "./useBuildingPersistence";
+import {
+  useBuildingPersistence,
+  type Building,
+} from "./useBuildingPersistence";
 import type { PlacedObject, GridCell } from "../config/types";
+import { useAuthStore } from "@/stores/authStore";
 
 type ModalMode = "create" | "edit" | "delete" | null;
 
@@ -16,9 +20,13 @@ interface PendingAction {
  */
 export function useGridInteraction() {
   const [hoveredCell, setHoveredCell] = useState<GridCell | null>(null);
-  const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(
+    null
+  );
   const [modalMode, setModalMode] = useState<ModalMode>(null);
-  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -41,7 +49,6 @@ export function useGridInteraction() {
         buildingStructure: b.buildingStructure,
         buildingText: b.buildingText,
         title: b.title,
-        author: b.author,
       })),
     [buildings]
   );
@@ -81,12 +88,22 @@ export function useGridInteraction() {
 
       if (existing) {
         // 기존 건물 클릭 -> 상세 페이지로 이동
-        console.log("[onCellClick] Building found, navigating to:", existing.id);
+        console.log(
+          "[onCellClick] Building found, navigating to:",
+          existing.id
+        );
         if (onBuildingNavigate) {
           onBuildingNavigate(existing.id);
         }
       } else {
         // 빈 셀 클릭 -> 새 건물 배치 모달 열기
+        // 익명 사용자 체크
+        const isAnonymous = useAuthStore.getState().isAnonymous();
+        if (isAnonymous) {
+          setError("방문자는 건물을 생성할 수 없습니다. 로그인이 필요합니다.");
+          return;
+        }
+
         console.log("[onCellClick] Empty cell, opening create modal at:", x, z);
         setSelectedBuildingId(null);
         setPendingAction({ mode: "create", position: [x, 0, z] });
@@ -100,12 +117,17 @@ export function useGridInteraction() {
   const confirmCreate = useCallback(
     async (data: {
       title: string;
-      author: string;
       buildingText: string;
       meshIndex: number;
-      password: string;
     }) => {
       if (!pendingAction?.position) return;
+
+      // 익명 사용자 체크
+      const isAnonymous = useAuthStore.getState().isAnonymous();
+      if (isAnonymous) {
+        setError("방문자는 건물을 생성할 수 없습니다. 로그인이 필요합니다.");
+        return;
+      }
 
       const [x, y, z] = pendingAction.position;
       
@@ -116,11 +138,9 @@ export function useGridInteraction() {
           position_z: z,
           color: 0xffffff,
           mesh_index: data.meshIndex,
-          building_text: data.buildingText.slice(0, 10), // 10자 제한
+          building_text: data.buildingText.slice(0, 50), // 50자 제한
           title: data.title,
-          author: data.author,
         },
-        data.password,
         data.meshIndex
       );
 
@@ -135,21 +155,25 @@ export function useGridInteraction() {
   );
 
   // 건물 삭제 확인
-  const confirmDelete = useCallback(
-    async (password: string) => {
+  const confirmDelete = useCallback(async () => {
       if (!selectedBuildingId) return;
 
-      const success = await deleteBuilding(selectedBuildingId, password);
+    // 익명 사용자 체크
+    const isAnonymous = useAuthStore.getState().isAnonymous();
+    if (isAnonymous) {
+      setError("방문자는 건물을 삭제할 수 없습니다. 로그인이 필요합니다.");
+      return;
+    }
+
+    const success = await deleteBuilding(selectedBuildingId);
 
       if (success) {
         setSelectedBuildingId(null);
         setModalMode(null);
       } else {
-        setError("비밀번호가 일치하지 않습니다.");
+      setError("건물 삭제에 실패했습니다.");
       }
-    },
-    [selectedBuildingId, deleteBuilding]
-  );
+  }, [selectedBuildingId, deleteBuilding]);
 
   // 모달 닫기
   const closeModal = useCallback(() => {

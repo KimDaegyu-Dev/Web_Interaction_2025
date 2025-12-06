@@ -1,6 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
-import { supabase, type WreathData, type InsertWreathData } from "@/utils/supabase";
+import {
+  supabase,
+  type WreathData,
+  type InsertWreathData,
+} from "@/utils/supabase";
 import type { WreathInstance } from "../config/types";
+import { useAuthStore } from "@/stores/authStore";
 
 /**
  * 화환 영속성 훅
@@ -32,18 +37,21 @@ export function useWreathPersistence(buildingId: string | null) {
         }
 
         if (data) {
-          const loadedWreaths: WreathInstance[] = data.map((wreath: WreathData) => ({
-            id: wreath.id,
-            buildingId: wreath.building_id,
-            message: wreath.message,
-            sender: wreath.sender,
-            position: [
-              wreath.final_position_x ?? 0,
-              wreath.final_position_y ?? 15, // 드롭 높이에서 시작
-              wreath.final_position_z ?? 0,
-            ],
-            hasDropped: wreath.final_position_y !== null && wreath.final_position_y < 1,
-          }));
+          const loadedWreaths: WreathInstance[] = data.map(
+            (wreath: WreathData) => ({
+              id: wreath.id,
+              buildingId: wreath.building_id,
+              message: wreath.message,
+              userId: wreath.user_id,
+              position: [
+                wreath.final_position_x ?? 0,
+                wreath.final_position_y ?? 15, // 드롭 높이에서 시작
+                wreath.final_position_z ?? 0,
+              ],
+              hasDropped:
+                wreath.final_position_y !== null && wreath.final_position_y < 1,
+            })
+          );
           setWreaths(loadedWreaths);
         }
       } catch (error) {
@@ -60,7 +68,10 @@ export function useWreathPersistence(buildingId: string | null) {
   useEffect(() => {
     if (!buildingId) return;
 
-    console.log("[WreathPersistence] Setting up Realtime subscription for building:", buildingId);
+    console.log(
+      "[WreathPersistence] Setting up Realtime subscription for building:",
+      buildingId
+    );
 
     const channel = supabase
       .channel(`wreaths-${buildingId}`)
@@ -85,7 +96,7 @@ export function useWreathPersistence(buildingId: string | null) {
                   id: newWreath.id,
                   buildingId: newWreath.building_id,
                   message: newWreath.message,
-                  sender: newWreath.sender,
+                  userId: newWreath.user_id,
                   position: [
                     newWreath.final_position_x ?? 0,
                     newWreath.final_position_y ?? 15,
@@ -124,14 +135,27 @@ export function useWreathPersistence(buildingId: string | null) {
 
   // 화환 생성
   const createWreath = useCallback(
-    async (message: string, sender: string): Promise<WreathData | null> => {
+    async (message: string): Promise<WreathData | null> => {
       if (!buildingId) return null;
+
+      const user = useAuthStore.getState().user;
+      const isAnonymous = useAuthStore.getState().isAnonymous();
+
+      if (!user) {
+        console.error("User not authenticated");
+        return null;
+      }
+
+      if (isAnonymous) {
+        console.error("Anonymous users cannot create wreaths");
+        return null;
+      }
 
       try {
         const insertData: InsertWreathData = {
           building_id: buildingId,
           message,
-          sender,
+          user_id: user.id,
           // 초기 위치는 null (물리 시뮬레이션 후 업데이트)
           final_position_x: null,
           final_position_y: null,
@@ -182,9 +206,7 @@ export function useWreathPersistence(buildingId: string | null) {
         // 로컬 상태 업데이트
         setWreaths((prev) =>
           prev.map((w) =>
-            w.id === wreathId
-              ? { ...w, position, hasDropped: true }
-              : w
+            w.id === wreathId ? { ...w, position, hasDropped: true } : w
           )
         );
 
