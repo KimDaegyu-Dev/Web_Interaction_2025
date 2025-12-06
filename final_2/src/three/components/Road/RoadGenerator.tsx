@@ -1,9 +1,9 @@
 import { useMemo } from "react";
-import type { RoadClusterBounds } from "../../utils/clusteringAlgorithm";
+import type { RoadCluster } from "../../utils/clusteringAlgorithm";
 import { GRID_CONFIG } from "../../config/grid";
 
 interface RoadGeneratorProps {
-  clusters: RoadClusterBounds[];
+  clusters: RoadCluster[];
   roadWidth?: number;
   roadColor?: string;
 }
@@ -11,7 +11,7 @@ interface RoadGeneratorProps {
 /**
  * 도로 생성 컴포넌트
  *
- * 클러스터 바운딩 박스를 기반으로 도로 메시를 생성합니다.
+ * 클러스터 정보를 기반으로 도로 메시를 생성합니다.
  * InfiniteBackground GLSL에서 도로를 렌더링하므로,
  * 이 컴포넌트는 디버그 시각화용으로 사용됩니다.
  */
@@ -20,7 +20,7 @@ export function RoadGenerator({
   roadWidth = GRID_CONFIG.ROAD.WIDTH,
   roadColor = GRID_CONFIG.ROAD.COLOR,
 }: RoadGeneratorProps) {
-  // 도로 세그먼트 생성
+  // 도로 세그먼트 생성 (클러스터 바운딩 박스 기반)
   const roadSegments = useMemo(() => {
     const segments: Array<{
       position: [number, number, number];
@@ -29,7 +29,24 @@ export function RoadGenerator({
     }> = [];
 
     clusters.forEach((cluster) => {
-      const { minX, minZ, maxX, maxZ } = cluster;
+      // 클러스터 내 건물들로부터 바운딩 박스 계산
+      if (cluster.buildings.length === 0) return;
+
+      const cellSize = GRID_CONFIG.CELL_SIZE;
+      let minX = Infinity,
+        maxX = -Infinity;
+      let minZ = Infinity,
+        maxZ = -Infinity;
+
+      for (const building of cluster.buildings) {
+        const wx = building.x * cellSize;
+        const wz = building.z * cellSize;
+        minX = Math.min(minX, wx);
+        maxX = Math.max(maxX, wx + cellSize);
+        minZ = Math.min(minZ, wz);
+        maxZ = Math.max(maxZ, wz + cellSize);
+      }
+
       const halfWidth = roadWidth / 2;
       const y = 0.01; // 바닥 위 약간 띄움
 
